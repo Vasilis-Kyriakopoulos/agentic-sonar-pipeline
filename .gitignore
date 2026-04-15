@@ -1,10 +1,170 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
 
-# Virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+*.so
+
+
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+.pybuilder/
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# MD Files
+*.md
+
+.pdm.toml
+
+
+__pypackages__/
+
+
+celerybeat-schedule
+celerybeat.pid
+
+
+*.sage.py
+
+
+.env
 .venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+llms/
+llms.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# PyCharm
+.idea/
+
+# Added this to ignore models downloaded from HF
+model_cache/
+# Ignore finder files
+.DS_Store
+/.DS_Store
+
+# Ignore Chroma vector database
+vector_db/
+products_vectorstore/
+
+# And ignore any pickle files made during the course
+*.pkl
+
+# ignore gradio private files
+.gradio
+/.gradio
+
+# ignore diagnostics reports
+**/report.txt
+
+
+*.env.save
+.virtual_documents/
+WingIDE_Projekti/
+nohup.out
+*.png
+
+scraper_cache/
+challenge/
+
+# WandB local sync data.
+wandb/
+
+
+local/
+
