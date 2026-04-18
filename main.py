@@ -26,21 +26,22 @@ def fetch_sonarqube_issues(project_key: str) -> list[dict]:
     response.raise_for_status()
     data = response.json()
     print(f"Found {data['total']} issues for project '{project_key}'")
+    print(type(data["issues"]),type(data["issues"][0]))
+    print(data["issues"][0])
     return data["issues"]
 
 
-def fetch_source_code(component_key: str, line_number: int, window: int = 10) -> str:
+def fetch_source_code(component_key: str) -> str:
     """Fetch the source code of a file from SonarQube."""
     url = f"{SONARQUBE_URL}/api/sources/raw"
     params = {"key": component_key}
+    print(params)
     headers = {"Authorization": f"Bearer {SONARQUBE_TOKEN}"}
 
     response = requests.get(url, params=params, headers=headers)
     if response.status_code == 200:
         lines = response.text.splitlines()
-        start = max(0, line_number - window - 1)
-        end = min(len(lines), line_number + window)
-        return "".join(lines[start:end])
+        return "".join(lines)
     return ""
 
 
@@ -132,7 +133,7 @@ def main():
     # 3. Format everything for the LLM
     print("📝 Formatting issues for LLM...")
     prompt = format_issues_for_llm(issues, source_codes)
-
+    exit(1)
     # Save the prompt for reference
     with open("sonar_issues_prompt.txt", "w", encoding="utf-8") as f:
         f.write(prompt)

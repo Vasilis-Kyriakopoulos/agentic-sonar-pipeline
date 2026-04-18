@@ -1,0 +1,61 @@
+{
+    "key": "b36b0e47-2d88-4db4-ac6a-a0915e6536e7",
+    "rule": "python:S5717",
+    "severity": "CRITICAL",
+    "component": "patient-repo:main.py",
+    "project": "patient-repo",
+    "line": 19,
+    "hash": "faf10466b6fc4c0ce6116a3a26666e44",
+    "textRange": {
+        "startLine": 19,
+        "endLine": 19,
+        "startOffset": 27,
+        "endOffset": 34
+    },
+    "flows": [
+        {
+            "locations": [
+                {
+                    "component": "patient-repo:main.py",
+                    "textRange": {
+                        "startLine": 20,
+                        "endLine": 20,
+                        "startOffset": 4,
+                        "endOffset": 15
+                    },
+                    "msg": "The parameter is modified.",
+                    "msgFormattings": []
+                }
+            ]
+        }
+    ],
+    "status": "OPEN",
+    "message": "Change this default value to \"None\" and initialize this parameter inside the function/method.",
+    "effort": "5min",
+    "debt": "5min",
+    "author": "",
+    "tags": [
+        "bad-practice",
+        "pitfall"
+    ],
+    "creationDate": "2026-04-15T09:56:04+0000",
+    "updateDate": "2026-04-15T09:56:04+0000",
+    "type": "CODE_SMELL",
+    "scope": "MAIN",
+    "quickFixAvailable": false,
+    "messageFormattings": [],
+    "codeVariants": [],
+    "cleanCodeAttribute": "LOGICAL",
+    "cleanCodeAttributeCategory": "INTENTIONAL",
+    "impacts": [
+        {
+            "softwareQuality": "MAINTAINABILITY",
+            "severity": "HIGH"
+        }
+    ],
+    "issueStatus": "OPEN",
+    "prioritizedRule": false,
+    "fromSonarQubeUpdate": false,
+    "internalTags": [],
+    "linkedTicketStatus": "NOT_LINKED"
+}
