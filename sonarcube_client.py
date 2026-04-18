@@ -1,4 +1,3 @@
-from lib2to3.pgen2 import token
 import json
 import requests
 
@@ -29,8 +28,8 @@ class SonarCubeClient():
         headers = {"Authorization": f"Bearer {self.token}"}
         response = requests.get(url, params=params, headers=headers)
         if response.status_code == 200:
-            lines = response.text.splitlines()
-            return "".join(lines)
+            lines = response.content.decode("utf-8").splitlines()
+            return "\n".join(lines)
         return ""
 
     

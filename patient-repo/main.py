@@ -1,8 +1,9 @@
 import os
-import sys  # Î£ÏÎ¬Î»Î¼Î± 1: Unused import (Code Smell)
+import sys  # Σφάλμα 1: Unused import (Code Smell)
 
-def authenticate_user(username, password):    # Î£ÏÎ¬Î»Î¼Î± 2: Hardcoded credentials (Security Hotspot)
-    admin_pass = "super_secret_password_123!"
+def authenticate_user(username, password):
+    # Σφάλμα 2: Hardcoded credentials (Security Hotspot)
+    admin_pass = "super_secret_password_123!" 
     
     if username == "admin":
         if password == admin_pass:
@@ -14,7 +15,7 @@ def authenticate_user(username, password):    # Î£ÏÎ¬Î»Î¼Î± 2: Hard
     else:
         return False
 
-# Î£ÏÎ¬Î»Î¼Î± 3: Mutable default argument (Bug - Î Î¿Î»Ï ÎµÏÎ¹ÎºÎ¯Î½Î´ÏÎ½Î¿ ÏÏÎ·Î½ Python)
+# Σφάλμα 3: Mutable default argument (Bug - Πολύ επικίνδυνο στην Python)
 def add_item_to_cart(item, cart=None):
     if cart is None:
         cart = []
@@ -23,7 +24,7 @@ def add_item_to_cart(item, cart=None):
     return cart
 
 def calculate_discount(price, customer_type):
-    # Î£ÏÎ¬Î»Î¼Î± 4: High Cognitive Complexity (Code Smell - Î Î¿Î»Î»Î¬ if/else)
+    # Σφάλμα 4: High Cognitive Complexity (Code Smell - Πολλά if/else)
     discount = 0
     if price > 100:
         if customer_type == "VIP":
@@ -36,6 +37,7 @@ def calculate_discount(price, customer_type):
     else:
         if customer_type == "VIP":
             discount = 0.05
+            
     final_price = price - (price * discount)
     return final_price
 

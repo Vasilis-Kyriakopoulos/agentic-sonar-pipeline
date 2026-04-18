@@ -44,15 +44,26 @@ class FixerAgent(Agent):
 
     fix_function = {
             "name": "apply_code_fix",
-            "description": "Applies a specific fix to a file to resolve a SonarQube issue.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "file_path": {"type": "string"},
-                    "new_content": {"type": "string", "description": "The complete updated content of the file."}
-                },
-                "required": ["file_path", "fixed_code"]
-            }     
+                    "description": "Applies a fix to a specific file to resolve a SonarQube issue.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {
+                                "type": "string",
+                                "description": "The path of the file being fixed (e.g., 'main.py')."
+                            },
+                            "explanation": {
+                                "type": "string",
+                                "description": "A brief explanation of why this fix resolves the issue."
+                            },
+                            "fixed_code": { 
+                                "type": "string",
+                                "description": "The full, corrected content of the file."
+                            }
+                        },
+                        "required": ["file_path", "explanation", "fixed_code"],
+                        "additionalProperties": False # Καλή πρακτική για το Gemini να το βάζεις False
+                    }    
     }
 
     def get_tools(self):
@@ -76,11 +87,13 @@ class FixerAgent(Agent):
             arguments = json.loads(tool_call.function.arguments)
             tool = mapping.get(tool_name)
             result = tool(**arguments) if tool else ""
+            self.log(f"Applying fix to file: {arguments['file_path']}")
+            self.log(f"Explanation: {arguments['explanation']}")
             results.append({"role": "tool", "content": result, "tool_call_id": tool_call.id})
         return results
 
     @staticmethod
-    def apply_code_fix(file_path: str, new_content: str):
+    def apply_code_fix(file_path: str, explanation: str, fixed_code: str):
         """
         Physically overwrites the file with the fixed version.
         """
@@ -88,7 +101,7 @@ class FixerAgent(Agent):
             # Ensure the directory exists
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "w+", encoding="utf-8") as f:
-                f.write(new_content)
+                f.write(fixed_code)
             return "File change Success"
         except Exception as e:
             print(f"Error writing to file {file_path}: {e}")

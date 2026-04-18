@@ -5,8 +5,21 @@ import os
 import logging
 root = logging.getLogger()
 root.setLevel(logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 load_dotenv(override=True)
-agent = FixerAgent(model_name="gpt-5-nano",url = None, token=None)
+# Gemini API Configuration
+
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+# 2. Use the exact model string without the 'models/' prefix 
+# (The OpenAI SDK adds the prefix or handles it internally)
+GEMINI_MODEL = "gemini-3-flash-preview"
+
+agent = FixerAgent(
+    model_name=GEMINI_MODEL,
+    url=GEMINI_BASE_URL, 
+    token=os.getenv("GEMINI_API_KEY")
+)
 
 sonar_client = SonarCubeClient(url=os.getenv("SONARQUBE_URL"), token=os.getenv("SONARQUBE_TOKEN"))
 issues = sonar_client.get_issues(project_key="patient-repo")
