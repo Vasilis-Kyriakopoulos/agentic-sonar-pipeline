@@ -1,50 +1,53 @@
 import os
-import sys  # Σφάλμα 1: Unused import (Code Smell)
+import sys
 
-def authenticate_user(username, password):
-    # Σφάλμα 2: Hardcoded credentials (Security Hotspot)
-    admin_pass = "super_secret_password_123!" 
-    
-    if username == "admin":
-        if password == admin_pass:
-            print("Admin logged in")
+# Issue: S1135 - TODO tags should be handled
+# TODO: Implement a real database connection
+
+def add_numbers(a, b, c, d, e, f):
+    # Issue: S107 - Too many parameters
+    return a + b + c + d + e + f
+
+def process_data(data=[]):
+    # Issue: S5717 - Mutable default argument
+    data.append("processed")
+    return data
+
+def check_access(user_role):
+    # Issue: S3776 - High Cognitive Complexity
+    if user_role == "admin":
+        print("Access granted")
+        return True
+    else:
+        if user_role == "manager":
+            print("Partial access")
             return True
         else:
-            print("Wrong password")
-            return False
-    else:
-        return False
+            if user_role == "guest":
+                print("Limited access")
+                return True
+            else:
+                print("Access denied")
+                return False
 
-# Σφάλμα 3: Mutable default argument (Bug - Πολύ επικίνδυνο στην Python)
-def add_item_to_cart(item, cart=None):
-    if cart is None:
-        cart = []
-    cart.append(item)
-    print(f"Added {item} to cart.")
-    return cart
-
-def calculate_discount(price, customer_type):
-    # Σφάλμα 4: High Cognitive Complexity (Code Smell - Πολλά if/else)
-    discount = 0
-    if price > 100:
-        if customer_type == "VIP":
-            discount = 0.20
-        elif customer_type == "Regular":
-            discount = 0.10
-        else:
-            if price > 500:
-                discount = 0.05
-    else:
-        if customer_type == "VIP":
-            discount = 0.05
-            
-    final_price = price - (price * discount)
-    return final_price
+def calculate_area(radius):
+    # Issue: S905 - Unnecessary parentheses
+    area = (3.14159 * (radius ** 2))
+    return (area)
 
 def main():
-    add_item_to_cart("Laptop")
-    add_item_to_cart("Mouse")
-    print(calculate_discount(150, "VIP"))
+    # Issue: S1192 - String literals should not be duplicated
+    print("Welcome to the system")
+    print("Welcome to the system")
+    
+    # Issue: S125 - Commented out code
+    # result = add_numbers(1, 2, 3, 4, 5, 6)
+    # print(result)
+    
+    items = process_data()
+    print(items)
+    
+    check_access("guest")
 
 if __name__ == "__main__":
     main()

@@ -1,137 +1,130 @@
-import re
-from typing import List, Dict
-from openai import OpenAI
-from sentence_transformers import SentenceTransformer
-from agents.agent import Agent
-import json
 import os
+import json
+import subprocess
+from typing import List, Dict
+from agents.agent import Agent
 
 class FixerAgent(Agent):
     name = "Fixer Agent"
     color = Agent.BLUE
-    # Define rules 
+    
     system_message = (
          "You are a Senior Software Engineer specializing in Python code quality and security. "
          "Your task is to resolve issues identified by SonarQube.\n\n"
          "OPERATIONAL RULES:\n"
          "1. FOCUS: Only address the specific issue described. Do not perform unrelated refactoring.\n"
          "2. PRECISION: Pay close attention to the 'line' number and the 'message' provided.\n"
-         "3. INDENTATION: Ensure the Python indentation in your 'fixed_code' is perfectly consistent with the original file.\n"
-         "4. TOOL USE: You MUST submit your fix by calling the 'apply_code_fix' tool.\n"
-         "5. OUTPUT: Inform when finished with message: 'Fix applied successfully'"
-         "6. FILE PATH:The folder of the file is 'patient-repo' is in the same directory as this file. The file path is provided in the issue details. Use it directly in the 'apply_code_fix' tool.\n"
-        )
+         "3. SURGICAL EDITS: You MUST use the 'apply_surgical_fix' tool to replace only the necessary block of code. Avoid overwriting the entire file.\n"
+         "4. OUTPUT: Inform when finished with message: 'Fix applied successfully'\n"
+    )
 
-    def __init__(self, model_name: str, url: str = None, token: str = None) -> None:
-        """
-        Initializes the Fixer Agent with the necessary LLM configuration.
+    def __init__(self, model_name: str, url: str = None, token: str = None, repo_path: str = None) -> None:
+        super().__init__(model_name, url, token)
+        self.repo_path = repo_path or os.getcwd()
+        self.tool_mapping = {
+            "apply_surgical_fix": self.apply_surgical_fix
+        }
+        self.log(f"Fixer Agent ready at: {self.repo_path}")
 
-        The Fixer Agent is responsible for receiving SonarQube issues and generating 
-        code fixes using an OpenAI-compatible API.
-
-        Args:
-            model_name (str): The name of the LLM model to use (e.g., 'gpt-4o', 'llama3').
-            url (str): The base URL for the OpenAI-compatible API (OpenAI, Ollama, etc.).
-            token (str): The API key or token required for authentication.
-
-        Note:
-            Sets up the internal OpenAI client and logs the agent's readiness state.
-        """
-        self.log("Initializing Fixer Agent")
-        self.client = OpenAI(api_key=token, base_url=url)
-        self.model_name = model_name
-        self.log("Fixer Agent is ready")
-
-    fix_function = {
-            "name": "apply_code_fix",
-                    "description": "Applies a fix to a specific file to resolve a SonarQube issue.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "file_path": {
-                                "type": "string",
-                                "description": "The path of the file being fixed (e.g., 'main.py')."
-                            },
-                            "explanation": {
-                                "type": "string",
-                                "description": "A brief explanation of why this fix resolves the issue."
-                            },
-                            "fixed_code": { 
-                                "type": "string",
-                                "description": "The full, corrected content of the file."
-                            }
-                        },
-                        "required": ["file_path", "explanation", "fixed_code"],
-                        "additionalProperties": False # Καλή πρακτική για το Gemini να το βάζεις False
-                    }    
+    surgical_fix_function = {
+        "name": "apply_surgical_fix",
+        "description": "Applies a surgical fix to a specific file by replacing a block of code.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "The path of the file being fixed relative to the repo root."
+                },
+                "old_code": {
+                    "type": "string",
+                    "description": "The exact block of code to be replaced, including leading indentation and trailing newlines."
+                },
+                "new_code": {
+                    "type": "string",
+                    "description": "The new block of code to insert."
+                },
+                "explanation": {
+                    "type": "string",
+                    "description": "A brief explanation of why this fix resolves the issue."
+                }
+            },
+            "required": ["file_path", "old_code", "new_code", "explanation"],
+            "additionalProperties": False
+        }
     }
 
     def get_tools(self):
-        """
-        Return the json for the tools to be used
-        """
-        return [
-            {"type": "function", "function": self.fix_function}
-        ]
+        return [{"type": "function", "function": self.surgical_fix_function}]
 
-    def handle_tool_call(self, message):
-        """
-        Actually call the tools associated with this message
-        """
-        mapping = {
-            "apply_code_fix": self.apply_code_fix,
-        }
-        results = []
-        for tool_call in message.tool_calls:
-            tool_name = tool_call.function.name
-            arguments = json.loads(tool_call.function.arguments)
-            tool = mapping.get(tool_name)
-            result = tool(**arguments) if tool else ""
-            self.log(f"Applying fix to file: {arguments['file_path']}")
-            self.log(f"Explanation: {arguments['explanation']}")
-            results.append({"role": "tool", "content": result, "tool_call_id": tool_call.id})
-        return results
+    def apply_surgical_fix(self, file_path: str, old_code: str, new_code: str, explanation: str) -> str:
+        # Prepend repo_path if not already absolute
+        clean_path = file_path
+        print("file_path", file_path)
+        print("old_code", old_code)
+        print("new_code", new_code)
+        print("explanation", explanation)
+        if ":" in clean_path:
+            clean_path = clean_path.split(":")[-1]
+        
+        full_path = clean_path if os.path.isabs(clean_path) else os.path.join(self.repo_path, clean_path)
 
-    @staticmethod
-    def apply_code_fix(file_path: str, explanation: str, fixed_code: str):
-        """
-        Physically overwrites the file with the fixed version.
-        """
         try:
-            # Ensure the directory exists
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            with open(file_path, "w+", encoding="utf-8") as f:
-                f.write(fixed_code)
-            return "File change Success"
-        except Exception as e:
-            print(f"Error writing to file {file_path}: {e}")
-            return "File change Failure"
+            if not os.path.exists(full_path):
+                return f"Failure: File {full_path} does not exist."
 
+            with open(full_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            
+            if old_code not in content:
+                self.log(f"Failure: 'old_code' block not found in {clean_path}. Ensure exact match including indentation and newlines.")
+                return f"Failure: 'old_code' block not found in {clean_path}. Ensure exact match including indentation and newlines."
+            
+            new_content = content.replace(old_code, new_code, 1)
+            with open(full_path, "w", encoding="utf-8", newline='') as f:
+                f.write(new_content)
+            
+            return f"Success: Fix applied. {explanation}"
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def setup_fix_branch(self, branch_name: str):
+        """Prepares the repository for a new set of fixes."""
+        self.log(f"Setting up branch: {branch_name}")
+        try:
+
+            # Check if in git repo
+            subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=self.repo_path, check=True, capture_output=True)
+            # Ensure we are on a clean state (optional but safer)
+            subprocess.run(["git", "checkout", "main"], cwd=self.repo_path, capture_output=True,check=True)
+            # Create/Switch to the branch
+            result = subprocess.run(["git", "checkout", "-b", branch_name], cwd=self.repo_path, capture_output=True)
+            if result.returncode != 0:
+                 subprocess.run(["git", "checkout", branch_name], cwd=self.repo_path, check=True, capture_output=True)
+            subprocess.run(["git", "restore", "."], cwd=self.repo_path, capture_output=True,check=True)
+            return True
+        except Exception as e:
+            self.log(f"Git setup failed: {e}")
+            return False
+
+    def commit_fix(self, message: str):
+        """Commits the current changes to the branch."""
+        try:
+            subprocess.run(["git", "add", "."], cwd=self.repo_path, check=True)
+            subprocess.run(["git", "commit", "-m", message], cwd=self.repo_path, check=True)
+            self.log(f"Committed: {message}")
+            return True
+        except Exception as e:
+            self.log(f"Commit failed: {e}")
+            return False
 
     def fix_code_file(self, issue: dict, source_code: str) -> str:
-        """
-        Orchestrates the code fix process by interacting with the LLM and executing tool calls.
-
-        This method sends the SonarQube issue metadata and the source code context to the LLM. 
-        It enters a loop to handle 'tool_calls', allowing the agent to use the 'apply_code_fix' 
-        tool to propose changes. 
-
-        The process follows these steps:
-        1. Formulates a detailed prompt with rule ID, line number, and original code.
-        2. Executes the LLM call with access to the 'apply_code_fix' tool.
-        3. If the LLM requests a tool call, the method executes the physical file change via 
-           'handle_tool_call' and appends the result to the conversation history.
-        4. Continues until the LLM provides a final confirmation or summary.
-
-        Args:
-            issue (dict): The dictionary containing SonarQube issue metadata (key, rule, line, message).
-            source_code (str): The full content of the file requiring a fix.
-
-        Returns:
-            str: The final explanation or status message from the Fixer Agent.
-        """
-        self.log("Fixer Agent is changing the code!!!")
-        user_message = f"""
+        """Applies a fix to the current branch."""
+        self.log(f"Fixing issue {issue['rule']} at line {issue.get('line')}")
+        
+        messages = [
+            {"role": "system", "content": self.system_message},
+            {"role": "user", "content": f"""
                 I need you to fix a SonarQube issue in the file: '{issue['component']}'
                 ISSUE DETAILS:
                 - Rule ID: {issue['rule']}
@@ -145,28 +138,34 @@ class FixerAgent(Agent):
                 ---
                 INSTRUCTIONS:
                 1. Analyze the code at line {issue['line']}.
-                2. Apply the fix suggested by the SonarQube message.
-                3. Ensure the overall logic of the program remains unchanged.
-                4. Use the 'apply_code_fix' tool to return the updated file content.
-                """
-        messages = [
-            {"role": "system", "content": self.system_message},
-            {"role": "user", "content": user_message}
+                2. Identify the exact block of code (including indentation) that needs to be changed.
+                3. Use 'apply_surgical_fix' to replace ONLY that block. 
+                """}
         ]
         done = False
-        while not done:
+        max_tries = 3
+        current_tries = 0
+        while not done and current_tries < max_tries:
             response = self.client.chat.completions.create(
-                model=self.model_name, messages=messages, tools=self.get_tools()
+                model=self.model_name, 
+                messages=messages, 
+                tools=self.get_tools(),
+                tool_choice="auto"
             )
-            if response.choices[0].finish_reason == "tool_calls":
-                message = response.choices[0].message
+            message = response.choices[0].message
+            if message.tool_calls:
                 results = self.handle_tool_call(message)
                 messages.append(message)
                 messages.extend(results)
+                
+                if any("Success" in str(r['content']) for r in results):
+                    messages.append({"role": "user", "content": "The fix was applied successfully. Please provide a final summary."})
             else:
                 done = True
+            current_tries += 1
+        if current_tries == max_tries:
+            self.log(f"Fixer Agent failed to fix the issue within {max_tries} tries.")
+            return "Fix failed within max tries"
         reply = response.choices[0].message.content
-        self.log(f"Fixer Agent completed with: {reply}")
+        self.log(f"Fixer Agent completed: {reply}")
         return reply
-            
-        

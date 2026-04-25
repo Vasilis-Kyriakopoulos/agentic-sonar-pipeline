@@ -109,6 +109,9 @@ llms.bak/
 .spyderproject
 .spyproject
 
+vulnerable-python-repo/
+vulnerable-python-repo
+
 # Rope project settings
 .ropeproject
 
