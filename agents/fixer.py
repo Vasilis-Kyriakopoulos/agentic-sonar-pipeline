@@ -24,7 +24,6 @@ class FixerAgent(Agent):
         self.tool_mapping = {
             "apply_surgical_fix": self.apply_surgical_fix
         }
-        self.log(f"Fixer Agent ready at: {self.repo_path}")
 
     surgical_fix_function = {
         "name": "apply_surgical_fix",
@@ -60,10 +59,6 @@ class FixerAgent(Agent):
     def apply_surgical_fix(self, file_path: str, old_code: str, new_code: str, explanation: str) -> str:
         # Prepend repo_path if not already absolute
         clean_path = file_path
-        print("file_path", file_path)
-        print("old_code", old_code)
-        print("new_code", new_code)
-        print("explanation", explanation)
         if ":" in clean_path:
             clean_path = clean_path.split(":")[-1]
         

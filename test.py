@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from sonarcube_client import SonarCubeClient
 from agents.fixer import FixerAgent
 from agents.reviewer import ReviewerAgent
+from agents.tester import TesterAgent
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -17,8 +18,8 @@ load_dotenv(override=True)
 # --- Configuration ---
 MODEL_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 MODEL_BASE_URL = "http://127.0.0.1:1234/v1"
-MODEL = "gemini-3-flash-preview" # Changed to a known stable model, or keep yours
-MODEL = "gemma4" # Changed to a known stable model, or keep yours
+MODEL = "gemini-3-flash-preview" 
+MODEL = "gemma4" 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SONAR_TOKEN = os.getenv("SONARQUBE_TOKEN")
 SONAR_URL = os.getenv("SONARQUBE_URL")
@@ -41,6 +42,13 @@ def main():
         model_name=MODEL,
         url=MODEL_BASE_URL,
         token=GEMINI_API_KEY
+    )
+
+    tester = TesterAgent(
+        model_name=MODEL,
+        url=MODEL_BASE_URL,
+        token=GEMINI_API_KEY,
+        repo_path=REPO_PATH
     )
 
     # 2. Fetch Issues
@@ -67,18 +75,25 @@ def main():
         
         # A. Fix the code
         fix_reply = fixer.fix_code_file(issue, source_code)
-        if fix_reply.startswith("Failure"):
+        if fix_reply.startswith("Fix failed within max tries"):
             print("❌ Fix failed:", fix_reply)
             continue
         
         # B. Get the updated code for review
-        # (Surgical fix updated the file, so we read it)
         file_path = component_key.split(":")[-1]
         full_path = os.path.join(REPO_PATH, file_path)
         
         try:
             with open(full_path, "r", encoding="utf-8") as f:
                 fixed_code = f.read()
+            
+            test_result = tester.test(issue, source_code, fixed_code)
+            
+            if test_result.get("test_passed"):
+                print("✅ Test passed!")
+            else:
+                print("❌ Test failed:", test_result.get("test_output"))
+                continue
             
             # C. Review the fix
             review_result = reviewer.review(issue, source_code, fixed_code)
