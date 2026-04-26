@@ -88,11 +88,11 @@ class TesterAgent(Agent):
         
         # Execute the test code using pytest
         result = subprocess.run([sys.executable, "-m", "pytest", "test_sonar.py"], cwd=self.repo_path, capture_output=True, text=True)
-        
         # Clean up
         os.remove(os.path.join(self.repo_path, "test_sonar.py"))
         
         output = (result.stdout or "") + "\n" + (result.stderr or "")
+        print(output)
         return {
             "test_passed": result.returncode == 0,
          
@@ -113,6 +113,7 @@ class TesterAgent(Agent):
         
         user_message = f"""
         ORIGINAL SONARQUBE ISSUE:
+        - File Path: {issue.get('component')}
         - Rule: {issue.get('rule')}
         - Message: {issue.get('message')}
         ORIGINAL SOURCE CODE (Before Fix):
@@ -125,6 +126,9 @@ class TesterAgent(Agent):
         ---
         INSTRUCTIONS:
         Please follow your operational rules to verify this fix. The repository has ALREADY been updated with the proposed fixed code.
+        CRITICAL IMPORT RULE: When writing your test, you MUST use the correct import path based on the File Path. For example, if the file is 'pokedex/helper.py' (or 'project:pokedex/helper.py'), you should use 'from pokedex.helper import ...'. DO NOT use placeholders like 'your_module'.
+        CRITICAL TESTING RULE: If the code interacts with a database, file system, or external service, you MUST use `unittest.mock` (e.g., `MagicMock`, `patch`) to mock the dependencies rather than trying to set up a real database schema or environment.
+        PYTHON MOCKING TIP: Remember Python's name mangling for private attributes! If you need to mock a private attribute like `__conn` in a class `ConnectionWrapper`, you MUST set it using its mangled name `_ConnectionWrapper__conn` (e.g., `wrapper._ConnectionWrapper__conn = MagicMock()`) so the original class methods can find it.
         """
         
         messages = [
@@ -133,7 +137,9 @@ class TesterAgent(Agent):
         ]
 
         done = False
-        while not done:
+        max_tries = 3
+        current_tries = 0
+        while not done and current_tries < max_tries:
             response = self.client.chat.completions.create(
                 model=self.model_name, 
                 messages=messages, 
@@ -147,6 +153,7 @@ class TesterAgent(Agent):
                 messages.extend(results)
             else:
                 done = True
+            current_tries += 1
         reply = response.choices[0].message.content
         self.log(f"Tester Agent completed: {reply}")
         return {

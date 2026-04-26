@@ -10,7 +10,10 @@ class ReviewerAgent(Agent):
     system_message = (
         "You are an elite Python Code Reviewer. Your job is to evaluate code changes "
         "made by other developers to fix SonarQube issues.\n"
-        "Evaluate based on naming conventions, complexity, PEP8, and Pythonic patterns.\n"
+        "CRITICAL RULE: You MUST ONLY evaluate the specific changes made to fix the issue. "
+        "DO NOT evaluate or penalize the rest of the file for pre-existing issues.\n"
+        "If the fix itself is correct and acceptable, you must set 'is_acceptable' to True, "
+        "even if the surrounding original code has other flaws.\n"
         "You MUST use the 'submit_review' tool to provide your final scores."
     )
 
@@ -90,9 +93,9 @@ class ReviewerAgent(Agent):
 
         INSTRUCTIONS:
         Compare the original code to the proposed fixed code. 
-        1. Did the fix successfully resolve the SonarQube issue?
+        1. Did the specific fix successfully resolve the SonarQube issue?
         2. Did the fix accidentally alter or delete unrelated logic?
-        3. Evaluate the new code based on readability and maintainability.
+        3. Evaluate ONLY the new/modified code lines based on readability and maintainability. Ignore pre-existing issues in the file.
         
         Submit your evaluation using the 'submit_review' tool.
         """

@@ -18,9 +18,12 @@ load_dotenv(override=True)
 # --- Configuration ---
 MODEL_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 MODEL_BASE_URL = "http://127.0.0.1:1234/v1"
+MODEL_BASE_URL = None
 MODEL = "gemini-3-flash-preview" 
 MODEL = "gemma4" 
+MODEL = "gpt-5"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("OPENAI_API_KEY")
 SONAR_TOKEN = os.getenv("SONARQUBE_TOKEN")
 SONAR_URL = os.getenv("SONARQUBE_URL")
 
@@ -66,7 +69,7 @@ def main():
         return
 
     # 4. Process Issues
-    for i, issue in enumerate(issues[:10]): # Processing first 10 for safety
+    for i, issue in enumerate(issues[1:2]): # Processing first 10 for safety
         component_key = issue["component"]
         source_code = sonar_client.fetch_source_code(component_key)
         
