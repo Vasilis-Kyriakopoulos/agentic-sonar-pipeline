@@ -14,7 +14,8 @@ class TesterAgent(Agent):
         self.repo_path = repo_path
         self.tool_mapping = {
             "check_testability": self.check_testability,
-            "execute_test": self.execute_test
+            "execute_test": self.execute_test,
+            "submit_test_result": self.submit_test_result
         }       
     
     system_message = (
@@ -25,7 +26,7 @@ class TesterAgent(Agent):
         "2. STEP 1: Always use the 'check_testability' tool first to determine if the issue can be unit tested.\n"
         "3. STEP 2: If testable, use the 'execute_test' tool to submit your pytest code.\n"
         "4. STEP 3: Analyze the test results. If your test fails, correct your test code and call 'execute_test' again.\n"
-        "5. OUTPUT: When the test passes successfully, or if you determined the issue was not testable, reply with 'Success: [summary]'.\n"
+        "5. OUTPUT: When the test passes successfully, or if you determined the issue was not testable, use the 'submit_test_result' tool to provide the final result.\n"
     )
 
     check_testability_function = {
@@ -66,6 +67,26 @@ class TesterAgent(Agent):
             
         }
 
+    submit_test_result_function = {
+            "name": "submit_test_result",
+            "description": "Submits the final result of the test generation and execution process.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "test_passed": {
+                        "type": "boolean",
+                        "description": "True if the tests passed successfully or if the issue was not testable. False otherwise."
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "A summary of the test execution, including the reasoning if it was not testable, or a brief explanation of the tests performed."
+                    }
+                },
+                "required": ["test_passed", "summary"],
+                "additionalProperties": False
+            }
+        }
+
     def check_testability(self, is_testable: bool, reason: str) -> dict:
         """
         Checks if the SonarQube issue is testable.
@@ -101,7 +122,8 @@ class TesterAgent(Agent):
 
     def get_tools(self):
         return [{"type": "function", "function": self.check_testability_function},
-                {"type": "function", "function": self.execute_test_function}]
+                {"type": "function", "function": self.execute_test_function},
+                {"type": "function", "function": self.submit_test_result_function}]
     
     def test(self, issue: dict, source_code: str, fixed_code: str) -> dict:
         """
@@ -109,7 +131,7 @@ class TesterAgent(Agent):
         Orchestrates the test generation process using the LLM and tool calls.
         """
         self.log("Generating test code...")
-        self.test_code_data = None
+        self.test_result_data = None
         
         user_message = f"""
         ORIGINAL SONARQUBE ISSUE:
@@ -137,7 +159,7 @@ class TesterAgent(Agent):
         ]
 
         done = False
-        max_tries = 3
+        max_tries = 5
         current_tries = 0
         while not done and current_tries < max_tries:
             response = self.client.chat.completions.create(
@@ -151,12 +173,33 @@ class TesterAgent(Agent):
                 results = self.handle_tool_call(message)
                 messages.append(message)
                 messages.extend(results)
+                
+                for tool_call in message.tool_calls:
+                    if tool_call.function.name == "submit_test_result":
+                        done = True
+                        break
             else:
                 done = True
             current_tries += 1
-        reply = response.choices[0].message.content
-        self.log(f"Tester Agent completed: {reply}")
+            
+        if self.test_result_data:
+            self.log(f"Tester Agent completed: {self.test_result_data['test_output']}")
+            return self.test_result_data
+
+        reply = response.choices[0].message.content if response.choices[0].message.content else "No reply content"
+        self.log(f"Tester Agent completed with fallback reply: {reply}")
         return {
             "test_passed": reply is not None and "Success" in reply,
             "test_output": reply
         }
+
+    def submit_test_result(self, test_passed: bool, summary: str) -> str:
+        """
+        Tool implementation for submitting a test result.
+        """
+        self.test_result_data = {
+            "test_passed": test_passed,
+            "test_output": summary
+        }
+        self.log(f"Test Result Processed: Passed={test_passed}, Summary={summary}")
+        return "Test result submitted successfully"

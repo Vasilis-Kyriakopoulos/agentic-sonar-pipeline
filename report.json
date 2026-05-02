@@ -1,0 +1,118 @@
+[
+    {
+        "issue": {
+            "key": "be8b0f9a-2ed5-46f2-8483-927fec5bb8d8",
+            "rule": "python:S2772",
+            "severity": "MINOR",
+            "component": "vulnerable-python-repo:pokedex/helper.py",
+            "project": "vulnerable-python-repo",
+            "line": 38,
+            "hash": "1a1dc91c907325c69271ddf0c944bc72",
+            "textRange": {
+                "startLine": 38,
+                "endLine": 38,
+                "startOffset": 4,
+                "endOffset": 8
+            },
+            "flows": [],
+            "status": "REOPENED",
+            "message": "Remove this unneeded \"pass\".",
+            "effort": "2min",
+            "debt": "2min",
+            "author": "guillaume.dequenne@sonarsource.com",
+            "tags": [
+                "confusing"
+            ],
+            "creationDate": "2022-04-25T14:40:06+0000",
+            "updateDate": "2026-05-02T13:02:00+0000",
+            "type": "CODE_SMELL",
+            "scope": "MAIN",
+            "quickFixAvailable": false,
+            "messageFormattings": [],
+            "codeVariants": [],
+            "cleanCodeAttribute": "CLEAR",
+            "cleanCodeAttributeCategory": "INTENTIONAL",
+            "impacts": [
+                {
+                    "softwareQuality": "MAINTAINABILITY",
+                    "severity": "LOW"
+                }
+            ],
+            "issueStatus": "OPEN",
+            "prioritizedRule": false,
+            "fromSonarQubeUpdate": false,
+            "internalTags": [],
+            "linkedTicketStatus": "NOT_LINKED"
+        },
+        "result": {
+            "status": "SUCCESS",
+            "evaluation": {
+                "correctness_score": 9,
+                "safety_score": 9,
+                "readability_score": 9,
+                "verdict": "PASS",
+                "reasoning": "The patch cleanly removes the unnecessary 'pass' after the wrapper call in register_subscriber. This directly addresses the SonarQube rule (S2772) without altering behavior; tests continue to pass. No new security concerns or side effects are introduced, and the code remains clear and well-structured. Note: there is an unrelated potential issue where invalid emails do not raise, but that is outside the scope of this specific fix and would warrant separate attention.",
+                "overall_score": 9.0
+            },
+            "attempt": 1
+        }
+    },
+    {
+        "issue": {
+            "key": "a0fce933-6dd2-42ba-9ef1-c9bc497a77d1",
+            "rule": "python:S6965",
+            "severity": "MAJOR",
+            "component": "vulnerable-python-repo:pokedex/app.py",
+            "project": "vulnerable-python-repo",
+            "line": 9,
+            "hash": "f98291e1a2d0a909b0b4e910ce29a5aa",
+            "textRange": {
+                "startLine": 9,
+                "endLine": 9,
+                "startOffset": 0,
+                "endOffset": 15
+            },
+            "flows": [],
+            "status": "REOPENED",
+            "message": "Specify the HTTP methods this route should accept.",
+            "effort": "5min",
+            "debt": "5min",
+            "author": "guillaume.dequenne@sonarsource.com",
+            "tags": [
+                "flask"
+            ],
+            "creationDate": "2022-04-25T14:38:30+0000",
+            "updateDate": "2026-05-02T13:01:53+0000",
+            "type": "CODE_SMELL",
+            "scope": "MAIN",
+            "quickFixAvailable": false,
+            "messageFormattings": [],
+            "codeVariants": [],
+            "cleanCodeAttribute": "CONVENTIONAL",
+            "cleanCodeAttributeCategory": "CONSISTENT",
+            "impacts": [
+                {
+                    "softwareQuality": "MAINTAINABILITY",
+                    "severity": "MEDIUM"
+                }
+            ],
+            "issueStatus": "OPEN",
+            "prioritizedRule": false,
+            "fromSonarQubeUpdate": false,
+            "internalTags": [],
+            "linkedTicketStatus": "NOT_LINKED"
+        },
+        "result": {
+            "status": "SUCCESS",
+            "evaluation": {
+                "correctness_score": 9,
+                "safety_score": 9,
+                "readability_score": 9,
+                "verdict": "PASS",
+                "reasoning": "The fix aligns with SonarQube rule S6965 by explicitly declaring HTTP methods for routes. The index route now uses methods=['GET'], making allowed methods explicit, while the subscribe route remains POST. No functional changes beyond method explicitness, and existing tests pass with mocked dependencies, indicating no regression. The change is safe with minimal risk of side effects, and improves readability and maintainability by clarifying accepted HTTP methods.",
+                "overall_score": 9.0
+            },
+            "attempt": 1
+        }
+    }
+]

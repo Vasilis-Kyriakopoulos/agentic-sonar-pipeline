@@ -48,7 +48,7 @@ class FixerAgent(Agent):
                     "description": "A brief explanation of why this fix resolves the issue."
                 }
             },
-            "required": ["file_path", "old_code", "new_code", "explanation"],
+            "required": ["file_path", "old_code", "new_code"],
             "additionalProperties": False
         }
     }
@@ -56,7 +56,7 @@ class FixerAgent(Agent):
     def get_tools(self):
         return [{"type": "function", "function": self.surgical_fix_function}]
 
-    def apply_surgical_fix(self, file_path: str, old_code: str, new_code: str, explanation: str) -> str:
+    def apply_surgical_fix(self, file_path: str, old_code: str, new_code: str, explanation: str = "") -> str:
         # Prepend repo_path if not already absolute
         clean_path = file_path
         if ":" in clean_path:
@@ -72,8 +72,18 @@ class FixerAgent(Agent):
                 content = f.read()
             
             if old_code not in content:
-                self.log(f"Failure: 'old_code' block not found in {clean_path}. Ensure exact match including indentation and newlines.")
-                return f"Failure: 'old_code' block not found in {clean_path}. Ensure exact match including indentation and newlines."
+                # Fallback 1: Ignore leading/trailing newlines
+                if old_code.strip('\r\n') in content:
+                    old_code = old_code.strip('\r\n')
+                # Fallback 2: Strip all outer whitespace
+                elif old_code.strip() in content:
+                    if content.count(old_code.strip()) == 1:
+                        old_code = old_code.strip()
+                    else:
+                        return f"Failure: 'old_code' block not found exactly, and the stripped version appears multiple times in {clean_path}. Be more specific."
+                else:
+                    self.log(f"Failure: 'old_code' block not found in {clean_path}. Ensure exact match.")
+                    return f"Failure: 'old_code' block not found in {clean_path}. Ensure exact match."
             
             new_content = content.replace(old_code, new_code, 1)
             with open(full_path, "w", encoding="utf-8", newline='') as f:
@@ -87,7 +97,7 @@ class FixerAgent(Agent):
         """Prepares the repository for a new set of fixes."""
         self.log(f"Setting up branch: {branch_name}")
         try:
-
+            subprocess.run(["git", "restore", "."], cwd=self.repo_path, capture_output=True,check=True)
             # Check if in git repo
             subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=self.repo_path, check=True, capture_output=True)
             # Ensure we are on a clean state (optional but safer)
@@ -113,7 +123,7 @@ class FixerAgent(Agent):
             self.log(f"Commit failed: {e}")
             return False
 
-    def fix_code_file(self, issue: dict, source_code: str) -> str:
+    def fix_code_file(self, issue: dict, source_code: str,reflection_messages:List[str]) -> str:
         """Applies a fix to the current branch."""
         self.log(f"Fixing issue {issue['rule']} at line {issue.get('line')}")
         
@@ -134,7 +144,8 @@ class FixerAgent(Agent):
                 INSTRUCTIONS:
                 1. Analyze the code at line {issue['line']}.
                 2. Identify the exact block of code (including indentation) that needs to be changed.
-                3. Use 'apply_surgical_fix' to replace ONLY that block. 
+                3. Use 'apply_surgical_fix' to replace ONLY that block.
+                4. Previous attempts to fix this issue failed. Check previous messages and try to fix it: {reflection_messages}.
                 """}
         ]
         done = False
