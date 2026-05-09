@@ -1,45 +1,48 @@
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, Literal
+from pydantic import BaseModel, computed_field
 
 @dataclass
 class Issue:
     key: str
     rule: str
     severity: str
-    component: str       # "patient-repo:main.py"
-    file_path: str       # "main.py"
+    component: str       
+    file_path: str      
     line: int
     message: str
     type: str
     tags: List[str]
-    source_code: str     # full file source
+    source_code: str     
 
 @dataclass
 class FixResult:
-    fixed_code: str      # the complete fixed file
-    explanation: str     # what was changed and why
+    fixed_code: str      
+    explanation: str     
 
 @dataclass
 class TestResult:
-    test_code: str       # the pytest test code
-    passed: bool         # did the tests pass?
-    output: str          # stdout/stderr from test execution
+    test_code: str      
+    passed: bool         
+    output: str          
 
-@dataclass
-class ReviewResult:
-    readability_score: int   # 1-10
+class ReviewResult(BaseModel):
+    readability_score: int
     maintainability_score: int
     suggestions: List[str]
     is_acceptable: bool
 
-@dataclass
-class EvalResult:
-    correctness: int     # 1-10
-    safety: int          # 1-10
-    readability: int     # 1-10
-    overall_score: float # weighted average
-    verdict: str         # "PASS" | "RETRY" | "FAIL"
+class EvalResult(BaseModel):
+    correctness_score: int
+    safety_score: int
+    readability_score: int
+    verdict: Literal["PASS", "RETRY", "FAIL"]
     reasoning: str
+
+    @computed_field
+    @property
+    def overall_score(self) -> float:
+        return round((self.correctness_score + self.safety_score + self.readability_score) / 3.0, 1)
 
 @dataclass
 class PipelineResult:

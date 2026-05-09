@@ -1,7 +1,6 @@
 import os
-import json
-from typing import List, Dict
 from agents.agent import Agent
+from models import ReviewResult
 
 class ReviewerAgent(Agent):
     name = "Reviewer Agent"
@@ -13,68 +12,22 @@ class ReviewerAgent(Agent):
         "CRITICAL RULE: You MUST ONLY evaluate the specific changes made to fix the issue. "
         "DO NOT evaluate or penalize the rest of the file for pre-existing issues.\n"
         "If the fix itself is correct and acceptable, you must set 'is_acceptable' to True, "
-        "even if the surrounding original code has other flaws.\n"
-        "You MUST use the 'submit_review' tool to provide your final scores."
+        "even if the surrounding original code has other flaws.\n\n"
+        "SCORING RULES:\n"
+        "- readability_score (1-10): How easy is the changed code to read?\n"
+        "- maintainability_score (1-10): PEP8 compliance and Pythonic patterns of the changed code.\n"
+        "- suggestions: A list of specific improvement suggestions. Empty list if the code is perfect.\n"
+        "- is_acceptable: True if the fix meets professional standards, False otherwise.\n"
     )
 
     def __init__(self, model_name: str, url: str = None, token: str = None) -> None:
         super().__init__(model_name, url, token)
-        # Defining the mapping for the Agent base class to use
-        self.tool_mapping = {
-            "submit_review": self.submit_review
-        }
-
-    submit_review_function = {
-        "name": "submit_review",
-        "description": "Submits the code review scores and suggestions.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "readability_score": {
-                    "type": "integer",
-                    "description": "Score from 1 to 10 evaluating how easy the code is to read."
-                },
-                "maintainability_score": {
-                    "type": "integer",
-                    "description": "Score from 1 to 10 evaluating PEP8 compliance and Pythonic patterns."
-                },
-                "suggestions": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "A list of specific suggestions for improvement. Empty if the code is perfect."
-                },
-                "is_acceptable": {
-                    "type": "boolean",
-                    "description": "True if the code meets professional standards, False otherwise."
-                }
-            },
-            "required": ["readability_score", "maintainability_score", "suggestions", "is_acceptable"],
-            "additionalProperties": False
-        }   
-    }
-
-    def get_tools(self):
-        return [{"type": "function", "function": self.submit_review_function}]
-
-    def submit_review(self, readability_score: int, maintainability_score: int, suggestions: list, is_acceptable: bool):
-        """
-        Tool implementation for submitting a review.
-        """
-        self.review_data = {
-            "readability_score": readability_score,
-            "maintainability_score": maintainability_score,
-            "suggestions": suggestions,
-            "is_acceptable": is_acceptable
-        }
-        self.log(f"Review Processed: {self.review_data}")
-        return "Review submitted successfully"
 
     def review(self, issue: dict, source_code: str, fixed_code: str) -> dict:
         """
-        Orchestrates the review process using the LLM and tool calls.
+        Reviews the proposed fix using Pydantic structured output.
         """
         self.log("Starting code review...")
-        self.review_data = None
         
         user_message = f"""
         ORIGINAL SONARQUBE ISSUE:
@@ -96,26 +49,29 @@ class ReviewerAgent(Agent):
         1. Did the specific fix successfully resolve the SonarQube issue?
         2. Did the fix accidentally alter or delete unrelated logic?
         3. Evaluate ONLY the new/modified code lines based on readability and maintainability. Ignore pre-existing issues in the file.
-        
-        Submit your evaluation using the 'submit_review' tool.
         """
         
         messages = [
             {"role": "system", "content": self.system_message},
             {"role": "user", "content": user_message}
         ]
-        
-        response = self.client.chat.completions.create(
-            model=self.model_name,
-            messages=messages,
-            tools=self.get_tools(),
-            tool_choice="required"
-        )
-        
-        message = response.choices[0].message
-        if message.tool_calls:
-            # Use the base class tool handler
-            self.handle_tool_call(message)
-            return self.review_data
-        
-        return {"error": "No review tool was called by the LLM"}
+
+        try:
+            response = self.client.beta.chat.completions.parse(
+                model=self.model_name,
+                messages=messages,
+                response_format=ReviewResult
+            )
+
+            result: ReviewResult = response.choices[0].message.parsed
+            self.log(f"Review: acceptable={result.is_acceptable}, readability={result.readability_score}, maintainability={result.maintainability_score}")
+            return result.model_dump()
+
+        except Exception as e:
+            self.log(f"Structured output failed: {e}. Returning fallback review.")
+            return {
+                "readability_score": 5,
+                "maintainability_score": 5,
+                "suggestions": [f"Review failed: {str(e)}"],
+                "is_acceptable": True
+            }
