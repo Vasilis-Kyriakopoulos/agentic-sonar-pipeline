@@ -15,7 +15,6 @@ logging.getLogger("httpx").setLevel(logging.WARNING)
 
 load_dotenv(override=True)
 
-# --- All config from .env ---
 MODEL = os.getenv("LLM_MODEL")
 MODEL_BASE_URL = os.getenv("LLM_BASE_URL")
 LLM_API_KEY = os.getenv("LLM_API_KEY")
@@ -27,26 +26,26 @@ SONAR_URL = os.getenv("SONARQUBE_URL")
 def clone_repo(repo_url: str, target_dir: str) -> bool:
     """Clones a git repository. Returns True on success."""
     if os.path.exists(target_dir):
-        logging.info(f"📂 Directory '{target_dir}' already exists. Using existing repo.")
+        logging.info(f"Directory '{target_dir}' already exists. Using existing repo.")
         return True
 
-    logging.info(f"📥 Cloning {repo_url}...")
+    logging.info(f"Cloning {repo_url}...")
     try:
         subprocess.run(
             ["git", "clone", repo_url, target_dir],
             check=True, capture_output=True, text=True
         )
-        logging.info(f"✅ Cloned to {target_dir}")
+        logging.info(f"Cloned to {target_dir}")
         return True
     except subprocess.CalledProcessError as e:
-        logging.error(f"❌ Clone failed: {e.stderr}")
+        logging.error(f"Clone failed: {e.stderr}")
         return False
 
 
 def get_repo_path() -> str:
     """Prompts the user for a repo URL or local path and returns a local directory path."""
     print("\n" + "=" * 50)
-    print("  🔧 Agentic SonarQube Fix Pipeline")
+    print("Agentic SonarQube Fix Pipeline")
     print("=" * 50)
 
     repo_input = input("Enter a Git repo URL or local path: ").strip()

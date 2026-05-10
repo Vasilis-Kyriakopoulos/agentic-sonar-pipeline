@@ -144,19 +144,19 @@ class FixerAgent(Agent):
         self.fix_applied = False
 
         user_content = f"""
-            I need you to fix a SonarQube issue in the file: '{issue['component']}'
+            I need you to fix a SonarQube issue in the file: '{issue.get('component')}'
             ISSUE DETAILS:
-            - Rule ID: {issue['rule']}
-            - Type: {issue['type']}
-            - Line Number: {issue['line']}
-            - SonarQube Message: {issue['message']}
+            - Rule ID: {issue.get('rule')}
+            - Type: {issue.get('type')}
+            - Line Number: {issue.get('line')}
+            - SonarQube Message: {issue.get('message')}
 
             ORIGINAL SOURCE CODE:
             ---
             {source_code}
             ---
             INSTRUCTIONS:
-            1. Analyze the code at line {issue['line']}.
+            1. Analyze the code at line {issue.get('line')}.
             2. Identify the exact block of code (including indentation) that needs to be changed.
             3. Use 'apply_surgical_fix' to replace ONLY that block.
             """
