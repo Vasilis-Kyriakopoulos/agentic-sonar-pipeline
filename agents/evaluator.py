@@ -70,6 +70,20 @@ class EvaluatorAgent(Agent):
             )
 
             result: EvalResult = response.choices[0].message.parsed
+
+            # --- Token telemetry ---
+            usage = getattr(response, "usage", None)
+            if usage and self.db_session is not None:
+                from database import log_token_usage
+                log_token_usage(
+                    session=self.db_session,
+                    agent_name=self.name,
+                    model_name=self.model_name,
+                    prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                    completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+                    run_id=self.run_id,
+                )
+
             self.log(f"Verdict: {result.verdict} (Score: {result.overall_score}) - {result.reasoning}")
             return result.model_dump()
 

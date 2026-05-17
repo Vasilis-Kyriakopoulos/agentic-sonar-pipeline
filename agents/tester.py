@@ -1,3 +1,4 @@
+import datetime
 import os
 import sys
 import subprocess
@@ -104,14 +105,15 @@ class TesterAgent(Agent):
     def execute_test(self, test_code: str) -> str:
         """Writes test code to a temp file, runs pytest, and returns the output."""
         self.log("Executing test code...")
-        test_file = os.path.join(self.repo_path, "test_sonar.py")
+        now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        test_file = os.path.join(self.repo_path, f"test_sonar_{now}.py")
 
         try:
             with open(test_file, "w", encoding="utf-8") as f:
                 f.write(test_code)
 
             result = subprocess.run(
-                [sys.executable, "-m", "pytest", "test_sonar.py", "-v"],
+                [sys.executable, "-m", "pytest", test_file, "-v"],
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True
@@ -179,7 +181,7 @@ class TesterAgent(Agent):
         ]
 
         for attempt in range(self.MAX_TOOL_CALLS):
-            response = self.client.chat.completions.create(
+            response = self._tracked_call(
                 model=self.model_name,
                 messages=messages,
                 tools=self.get_tools(),

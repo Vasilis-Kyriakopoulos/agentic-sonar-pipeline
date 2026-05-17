@@ -1,13 +1,14 @@
 import os
 import logging
 import subprocess
-from typing import List
+from typing import List, Optional
 import json
 
 from agents.fixer import FixerAgent
 from agents.tester import TesterAgent
 from agents.reviewer import ReviewerAgent
 from agents.evaluator import EvaluatorAgent
+from database import create_run, complete_run, update_issue_status
 
 # Coordinator colors (not an Agent, so we define them locally)
 _CYAN = '\033[36m'
@@ -22,14 +23,24 @@ def _log(message: str) -> None:
 
 
 class Coordinator:
-    def __init__(self, sonar_client, model_name: str, url: str, token: str, repo_path: str, max_retries: int = 2):
+    def __init__(
+        self,
+        sonar_client,
+        model_name: str,
+        url: str,
+        token: str,
+        repo_path: str,
+        max_retries: int = 2,
+        db_session=None,
+    ):
         self.sonar_client = sonar_client
         self.repo_path = repo_path
         self.max_retries = max_retries
+        self.db_session = db_session
 
         # Create agents internally
-        self.fixer = FixerAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
-        self.tester = TesterAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
+        self.fixer    = FixerAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
+        self.tester   = TesterAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
         self.reviewer = ReviewerAgent(model_name=model_name, url=url, token=token)
         self.evaluator = EvaluatorAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
 
@@ -46,6 +57,19 @@ class Coordinator:
         file_path = component_key.split(":")[-1]
         full_path = os.path.join(self.repo_path, file_path)
         reflection_messages = []
+
+        # --- Create a DB record for this pipeline run ---
+        run_id: Optional[int] = None
+        if self.db_session is not None:
+            run = create_run(
+                session=self.db_session,
+                issue_key=issue["key"],
+                session_branch=getattr(self.fixer, "_current_branch", ""),
+            )
+            run_id = run.id
+            # Propagate DB context to all agents
+            for agent in (self.fixer, self.tester, self.reviewer, self.evaluator):
+                agent.set_run_context(self.db_session, run_id)
 
         for attempt in range(self.max_retries + 1):
             _log(f"\n--- [Attempt {attempt + 1}/{self.max_retries + 1}] for Issue {issue.get('rule')} ---")
@@ -85,6 +109,12 @@ class Coordinator:
                     evaluation_result.get("reasoning", ""),
                     evaluation_result.get("overall_score", 0)
                 )
+
+                # --- Persist success to DB ---
+                if self.db_session is not None:
+                    complete_run(self.db_session, run_id, "SUCCESS", attempt + 1)
+                    update_issue_status(self.db_session, issue["key"], "FIXED")
+
                 return {"status": "SUCCESS", "evaluation": evaluation_result, "attempt": attempt + 1}
 
             elif verdict == "RETRY":
@@ -93,13 +123,25 @@ class Coordinator:
                 reflection_messages.append(evaluation_result.get("reasoning", ""))
                 continue
 
-            else:  
+            else:
                 _log("❌ Evaluator marked fix as FAIL. Aborting this issue.")
                 self._restore_file(full_path)
+
+                # --- Persist failure to DB ---
+                if self.db_session is not None:
+                    complete_run(self.db_session, run_id, "FAIL", attempt + 1)
+                    update_issue_status(self.db_session, issue["key"], "FAILED")
+
                 return {"status": "FAIL", "reason": "Evaluator verdict was FAIL"}
 
         _log("❌ Max retries reached. Issue remains unfixed.")
         self._restore_file(full_path)
+
+        # --- Persist max-retry failure to DB ---
+        if self.db_session is not None:
+            complete_run(self.db_session, run_id, "FAIL", self.max_retries + 1)
+            update_issue_status(self.db_session, issue["key"], "FAILED")
+
         return {"status": "FAIL", "reason": "Max retries reached"}
 
     def process_all(self, issues: List[dict]) -> List[dict]:

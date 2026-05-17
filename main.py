@@ -6,6 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from sonarcube_client import SonarCubeClient
 from agents.coordinator import Coordinator
+import database as db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -118,6 +119,10 @@ def select_issues(issues: list) -> list:
 
 
 def main():
+    # 0. Initialize the database
+    db.init_db()
+    session = db.get_session()
+
     # 1. Get the repository
     repo_path = get_repo_path()
 
@@ -132,7 +137,13 @@ def main():
     issues = sonar_client.get_issues(project_key)
     if not issues:
         logging.info("No issues found! Your code is clean.")
+        session.close()
         return
+
+    # 4a. Persist fetched issues to the database
+    for issue in issues:
+        db.upsert_issue(session, issue, project_key)
+    logging.info(f"[DB] Synced {len(issues)} issue(s) to the database.")
 
     # 5. User selects which issues to fix
     selected_issues = select_issues(issues)
@@ -143,7 +154,8 @@ def main():
         model_name=MODEL,
         url=MODEL_BASE_URL,
         token=LLM_API_KEY,
-        repo_path=repo_path
+        repo_path=repo_path,
+        db_session=session,
     )
 
     # 7. Setup a single branch for this session
@@ -151,13 +163,19 @@ def main():
     session_branch = f"fix/sonar-session-{timestamp}"
     if not coordinator.fixer.setup_fix_branch(session_branch):
         logging.info("❌ Failed to setup git branch. Exiting.")
+        session.close()
         return
 
     # 8. Process selected issues
     results = coordinator.process_all(selected_issues)
 
-    # 9. Print summary
+    # 9. Print pipeline summary
     print_summary(results, session_branch)
+
+    # 10. Print analytics report from the database
+    print_analytics(session)
+
+    session.close()
 
 
 def print_summary(results: list, branch: str) -> None:
@@ -180,6 +198,29 @@ def print_summary(results: list, branch: str) -> None:
 
     print(f"\n  Fixed: {success}, Failed: {failed}, Total: {len(results)}")
     print(f"Branch: {branch}")
+    print("=" * 60)
+
+
+def print_analytics(session) -> None:
+    """Queries the database and prints the final analytics report."""
+    analytics = db.get_analytics(session)
+
+    print("\n" + "=" * 60)
+    print("📊 Pipeline Analytics Report (from DB)")
+    print("=" * 60)
+    print(f"  Issues tracked    : {analytics['total_issues']}")
+    print(f"  ✅ Fixed          : {analytics['fixed']}")
+    print(f"  ❌ Failed         : {analytics['failed']}")
+    print(f"  ⏳ Still open     : {analytics['open']}")
+    print(f"  Success rate      : {analytics['success_rate_pct']}%")
+    print(f"  Total runs        : {analytics['total_runs']}")
+    print(f"  Avg attempts/run  : {analytics['avg_attempts']}")
+    print(f"  Total tokens used : {analytics['total_tokens']:,}")
+    print(f"  Total API cost    : ${analytics['total_cost_usd']:.6f}")
+    if analytics["cost_by_agent"]:
+        print("\n  Cost breakdown by agent:")
+        for agent, cost in sorted(analytics["cost_by_agent"].items()):
+            print(f"    • {agent:<22} ${cost:.6f}")
     print("=" * 60)
 
 

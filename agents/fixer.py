@@ -172,7 +172,7 @@ class FixerAgent(Agent):
         ]
 
         for attempt in range(self.MAX_TOOL_CALLS):
-            response = self.client.chat.completions.create(
+            response = self._tracked_call(
                 model=self.model_name,
                 messages=messages,
                 tools=self.get_tools(),

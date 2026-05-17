@@ -1,6 +1,64 @@
 [
     {
         "issue": {
+            "key": "718c9fd5-4910-4f38-b409-8ae3351c5fd7",
+            "rule": "python:S3984",
+            "severity": "MAJOR",
+            "component": "vulnerable-python-repo:pokedex/helper.py",
+            "project": "vulnerable-python-repo",
+            "line": 36,
+            "hash": "3a82cde9f89ec0b0691e27707549f4b9",
+            "textRange": {
+                "startLine": 36,
+                "endLine": 36,
+                "startOffset": 8,
+                "endOffset": 36
+            },
+            "flows": [],
+            "status": "REOPENED",
+            "message": "Raise this exception or remove this useless statement.",
+            "effort": "2min",
+            "debt": "2min",
+            "author": "guillaume.dequenne@sonarsource.com",
+            "tags": [
+                "error-handling"
+            ],
+            "creationDate": "2022-04-25T14:40:06+0000",
+            "updateDate": "2026-05-17T09:38:16+0000",
+            "type": "BUG",
+            "scope": "MAIN",
+            "quickFixAvailable": false,
+            "messageFormattings": [],
+            "codeVariants": [],
+            "cleanCodeAttribute": "CLEAR",
+            "cleanCodeAttributeCategory": "INTENTIONAL",
+            "impacts": [
+                {
+                    "softwareQuality": "RELIABILITY",
+                    "severity": "MEDIUM"
+                }
+            ],
+            "issueStatus": "OPEN",
+            "prioritizedRule": false,
+            "fromSonarQubeUpdate": false,
+            "internalTags": [],
+            "linkedTicketStatus": "NOT_LINKED"
+        },
+        "result": {
+            "status": "SUCCESS",
+            "evaluation": {
+                "correctness_score": 9,
+                "safety_score": 9,
+                "readability_score": 8,
+                "verdict": "PASS",
+                "reasoning": "The fix correctly addresses the SonarQube S3984 issue by converting the no-op raise into an actual raise for invalid emails. Previously, the code attempted to raise ValueError without using the raise keyword, leaving a useless statement. The updated code now raises ValueError('Invalid email!') when the email does not match the pattern, and proceeds to register the subscriber otherwise. This aligns with expected behavior and preserves existing error handling (DatabaseError -> generic exception; IntegrityError -> ValueError). Environment issues prevented actual test execution, but the logical change is sound and isolated, with no new security concerns. Readability is good, though there is room for minor enhancements (e.g., extracting validation to a helper or improving the regex/docstring).",
+                "overall_score": 8.7
+            },
+            "attempt": 1
+        }
+    },
+    {
+        "issue": {
             "key": "be8b0f9a-2ed5-46f2-8483-927fec5bb8d8",
             "rule": "python:S2772",
             "severity": "MINOR",
@@ -24,7 +82,7 @@
                 "confusing"
             ],
             "creationDate": "2022-04-25T14:40:06+0000",
-            "updateDate": "2026-05-02T13:02:00+0000",
+            "updateDate": "2026-05-17T09:38:18+0000",
             "type": "CODE_SMELL",
             "scope": "MAIN",
             "quickFixAvailable": false,
@@ -51,65 +109,7 @@
                 "safety_score": 9,
                 "readability_score": 9,
                 "verdict": "PASS",
-                "reasoning": "The patch cleanly removes the unnecessary 'pass' after the wrapper call in register_subscriber. This directly addresses the SonarQube rule (S2772) without altering behavior; tests continue to pass. No new security concerns or side effects are introduced, and the code remains clear and well-structured. Note: there is an unrelated potential issue where invalid emails do not raise, but that is outside the scope of this specific fix and would warrant separate attention.",
-                "overall_score": 9.0
-            },
-            "attempt": 1
-        }
-    },
-    {
-        "issue": {
-            "key": "a0fce933-6dd2-42ba-9ef1-c9bc497a77d1",
-            "rule": "python:S6965",
-            "severity": "MAJOR",
-            "component": "vulnerable-python-repo:pokedex/app.py",
-            "project": "vulnerable-python-repo",
-            "line": 9,
-            "hash": "f98291e1a2d0a909b0b4e910ce29a5aa",
-            "textRange": {
-                "startLine": 9,
-                "endLine": 9,
-                "startOffset": 0,
-                "endOffset": 15
-            },
-            "flows": [],
-            "status": "REOPENED",
-            "message": "Specify the HTTP methods this route should accept.",
-            "effort": "5min",
-            "debt": "5min",
-            "author": "guillaume.dequenne@sonarsource.com",
-            "tags": [
-                "flask"
-            ],
-            "creationDate": "2022-04-25T14:38:30+0000",
-            "updateDate": "2026-05-02T13:01:53+0000",
-            "type": "CODE_SMELL",
-            "scope": "MAIN",
-            "quickFixAvailable": false,
-            "messageFormattings": [],
-            "codeVariants": [],
-            "cleanCodeAttribute": "CONVENTIONAL",
-            "cleanCodeAttributeCategory": "CONSISTENT",
-            "impacts": [
-                {
-                    "softwareQuality": "MAINTAINABILITY",
-                    "severity": "MEDIUM"
-                }
-            ],
-            "issueStatus": "OPEN",
-            "prioritizedRule": false,
-            "fromSonarQubeUpdate": false,
-            "internalTags": [],
-            "linkedTicketStatus": "NOT_LINKED"
-        },
-        "result": {
-            "status": "SUCCESS",
-            "evaluation": {
-                "correctness_score": 9,
-                "safety_score": 9,
-                "readability_score": 9,
-                "verdict": "PASS",
-                "reasoning": "The fix aligns with SonarQube rule S6965 by explicitly declaring HTTP methods for routes. The index route now uses methods=['GET'], making allowed methods explicit, while the subscribe route remains POST. No functional changes beyond method explicitness, and existing tests pass with mocked dependencies, indicating no regression. The change is safe with minimal risk of side effects, and improves readability and maintainability by clarifying accepted HTTP methods.",
+                "reasoning": "The fix corrects a real bug: the original code attempted to raise an error for invalid emails but failed to actually raise it (it only constructed a ValueError). The updated function now raises ValueError(\"Invalid email!\") when the email does not match the regex, ensuring invalid inputs do not reach the database wrapper. Valid emails proceed to wrapper.register_subscriber as intended. This preserves the existing behavior for valid inputs and keeps the API contract intact (the same error type/message on invalid input). The stray 'pass' was removed, improving clarity. Tests (as described) would verify: - fetch_all_pokemons delegates to wrapper.get_all_pokemons; - invalid emails raise ValueError without touching the wrapper; - valid emails call wrapper.register_subscriber with the correct argument. The environment issue noted in testing appears unrelated to the code change (a Windows path limitation with test filenames); in a proper environment, the tests should pass. Suggested future improvements from reviewers (type hints, precompiled regex, minor docstrings) are optional enhancements but not necessary for correctness. Overall, this patch fixes the SonarQube S2772 issue without introducing safety risks or readability problems, yielding a solid PASS. ",
                 "overall_score": 9.0
             },
             "attempt": 1

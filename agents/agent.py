@@ -1,6 +1,8 @@
 import logging
 import json
+from typing import Optional
 from openai import OpenAI
+from sqlalchemy.orm import Session
 
 class Agent:
     """
@@ -26,12 +28,26 @@ class Agent:
     name: str = "Base Agent"
     color: str = '\033[37m'
 
-    def __init__(self, model_name: str, url: str = None, token: str = None) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        url: str = None,
+        token: str = None,
+        db_session: Optional[Session] = None,
+        run_id: Optional[int] = None,
+    ) -> None:
         """
         Initializes the agent with common LLM configuration.
+
+        Args:
+            db_session: An open SQLAlchemy session for token-usage telemetry.
+                        If None, token usage is logged to the console only.
+            run_id:     The current PipelineRun.id to associate token usage with.
         """
         self.model_name = model_name
         self.client = OpenAI(api_key=token, base_url=url)
+        self.db_session = db_session
+        self.run_id = run_id
         self.log(f"Initialized with model: {self.model_name}")
 
     def log(self, message):
@@ -41,6 +57,43 @@ class Agent:
         color_code = self.BG_BLACK + self.color
         formatted_message = f"[{self.name}] {message}"
         logging.info(color_code + formatted_message + self.RESET)
+
+    def set_run_context(self, db_session: Session, run_id: int) -> None:
+        """Attach or update the DB session and run_id mid-pipeline."""
+        self.db_session = db_session
+        self.run_id = run_id
+
+    def _tracked_call(self, **kwargs):
+        """
+        Wrapper around client.chat.completions.create() that automatically
+        logs prompt_tokens, completion_tokens, and estimated USD cost to the DB.
+        Pass the same kwargs you would pass to the OpenAI client.
+        """
+        response = self.client.chat.completions.create(**kwargs)
+
+        # --- Token telemetry ---
+        usage = getattr(response, "usage", None)
+        if usage:
+            prompt_tokens     = getattr(usage, "prompt_tokens", 0) or 0
+            completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+
+            if self.db_session is not None:
+                from database import log_token_usage
+                log_token_usage(
+                    session=self.db_session,
+                    agent_name=self.name,
+                    model_name=self.model_name,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    run_id=self.run_id,
+                )
+            else:
+                self.log(
+                    f"Token usage (no DB): prompt={prompt_tokens}, "
+                    f"completion={completion_tokens}"
+                )
+
+        return response
 
     def get_tools(self) -> list:
         """
