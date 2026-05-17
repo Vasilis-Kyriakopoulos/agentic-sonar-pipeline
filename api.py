@@ -29,7 +29,7 @@ import database as db
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-load_dotenv(override=True)
+load_dotenv()
 
 MODEL = os.getenv("LLM_MODEL")
 MODEL_BASE_URL = os.getenv("LLM_BASE_URL")

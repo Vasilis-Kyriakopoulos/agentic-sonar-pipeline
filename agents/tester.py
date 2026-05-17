@@ -168,18 +168,21 @@ class TesterAgent(Agent):
         requirements_path = os.path.join(abs_repo, "requirements.txt")
         install_cmd = "pip install -q pytest"
         if os.path.exists(requirements_path):
-            install_cmd = "pip install -q pytest -r /app/requirements.txt"
+            install_cmd = f"pip install -q pytest -r {requirements_path}"
+
+        # Use the container's hostname (which is its Docker ID) to inherit its volumes
+        # This solves the Docker-out-of-Docker volume mapping issue where host paths don't match container paths.
+        import socket
+        container_id = socket.gethostname()
 
         docker_cmd = [
             "docker", "run", "--rm",
-            "--network", "none",                           # No internet access
             "--memory", "256m",                            # Memory limit
-            "-v", f"{abs_repo}:/app:ro",                   # Mount repo read-only
-            "-v", f"{abs_test}:/app/{test_filename}:ro",   # Mount test file read-only
-            "-w", "/app",                                  # Working directory
+            "--volumes-from", f"{container_id}:ro",        # Mount same volumes as API app, but read-only
+            "-w", abs_repo,                                # Working directory inside the inherited volume
             "python:3.12-slim",                            # Lightweight Python image
             "bash", "-c",
-            f"{install_cmd} 2>/dev/null && python -m pytest /app/{test_filename} -v"
+            f"{install_cmd} >/dev/null 2>&1 && python -m pytest {abs_test} -v"
         ]
 
         try:
@@ -189,6 +192,9 @@ class TesterAgent(Agent):
                 text=True,
                 timeout=self.SANDBOX_TIMEOUT_SECONDS,
             )
+            print("STDOUT:", result.stdout)
+            print("STDERR:", result.stderr)
+
             output = (result.stdout or "") + "\n" + (result.stderr or "")
             passed = result.returncode == 0
             self.log(f"Test {'PASSED' if passed else 'FAILED'} (exit code {result.returncode})")

@@ -16,6 +16,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
+# Set default Git identity so the FixerAgent can commit fixes without errors
+RUN git config --global user.email "bot@agentic-pipeline.local" \
+    && git config --global user.name "Agentic Fixer Bot"
+
 # Install only the Python dependencies this project actually uses
 COPY requirements.docker.txt ./
 RUN pip install --no-cache-dir -r requirements.docker.txt

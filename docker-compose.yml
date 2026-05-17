@@ -23,31 +23,13 @@ services:
       - LLM_MODEL=${LLM_MODEL}
       - LLM_BASE_URL=${LLM_BASE_URL}
       - LLM_API_KEY=${LLM_API_KEY}
-      # SonarQube — points to the sibling container via Docker networking
-      - SONARQUBE_URL=http://sonarqube:9000
+      # Point to the user's existing local SonarQube instance
+      - SONARQUBE_URL=http://host.docker.internal:9000
       - SONARQUBE_TOKEN=${SONARQUBE_TOKEN}
       # Repos directory inside the container
       - REPOS_DIR=/app/repos
-    depends_on:
-      sonarqube:
-        condition: service_started
-    restart: unless-stopped
-
-  sonarqube:
-    image: sonarqube:community
-    ports:
-      - "9000:9000"
-    volumes:
-      - sonarqube_data:/opt/sonarqube/data
-      - sonarqube_logs:/opt/sonarqube/logs
-      - sonarqube_extensions:/opt/sonarqube/extensions
-    environment:
-      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
     restart: unless-stopped
 
 volumes:
   app_repos:
   app_db:
-  sonarqube_data:
-  sonarqube_logs:
-  sonarqube_extensions:
