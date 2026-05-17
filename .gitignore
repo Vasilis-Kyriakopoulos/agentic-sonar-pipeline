@@ -171,3 +171,8 @@ wandb/
 
 local/
 
+# Cloned target repos
+repos/
+
+# SQLite database
+pipeline.db

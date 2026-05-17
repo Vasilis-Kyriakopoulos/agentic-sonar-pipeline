@@ -78,9 +78,10 @@ class TesterAgent(Agent):
         }
     }
 
-    def __init__(self, model_name: str, url: str, token: str, repo_path: str):
+    def __init__(self, model_name: str, url: str, token: str, repo_path: str, allow_unsandboxed: bool = False):
         super().__init__(model_name, url, token)
         self.repo_path = repo_path
+        self.allow_unsandboxed = allow_unsandboxed
         self.tool_mapping = {
             "check_testability": self.check_testability,
             "execute_test": self.execute_test,
@@ -102,8 +103,12 @@ class TesterAgent(Agent):
         self.log(f"Testability check: {status} — {reason}")
         return f"{status}: {reason}"
 
+    # Maximum time (seconds) a test is allowed to run before being killed.
+    SANDBOX_TIMEOUT_SECONDS = 60
+
     def execute_test(self, test_code: str) -> str:
-        """Writes test code to a temp file, runs pytest, and returns the output."""
+        """Writes test code to a temp file and runs pytest in a sandbox (Docker)
+        or falls back to direct execution if Docker is not available."""
         self.log("Executing test code...")
         now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         test_file = os.path.join(self.repo_path, f"test_sonar_{now}.py")
@@ -112,17 +117,15 @@ class TesterAgent(Agent):
             with open(test_file, "w", encoding="utf-8") as f:
                 f.write(test_code)
 
-            result = subprocess.run(
-                [sys.executable, "-m", "pytest", test_file, "-v"],
-                cwd=self.repo_path,
-                capture_output=True,
-                text=True
-            )
-
-            output = (result.stdout or "") + "\n" + (result.stderr or "")
-            passed = result.returncode == 0
-            self.log(f"Test {'PASSED' if passed else 'FAILED'} (exit code {result.returncode})")
-            return f"{'PASSED' if passed else 'FAILED'}\n\n{output.strip()}"
+            if self._is_docker_available():
+                self.log("🐳 Running test in Docker sandbox...")
+                return self._run_in_docker(test_file)
+            elif self.allow_unsandboxed:
+                self.log("⚠️ Docker not available — running test directly (unsandboxed).")
+                return self._run_directly(test_file)
+            else:
+                self.log("🚫 Docker not available and unsandboxed execution not allowed. Skipping test.")
+                return "SKIPPED\n\nTest execution skipped: Docker is not available and unsandboxed execution was not approved."
 
         except Exception as e:
             self.log(f"Test execution error: {e}")
@@ -131,6 +134,83 @@ class TesterAgent(Agent):
         finally:
             if os.path.exists(test_file):
                 os.remove(test_file)
+
+    # --- Execution backends ---
+
+    @staticmethod
+    def _is_docker_available() -> bool:
+        """Check if the Docker daemon is reachable."""
+        try:
+            subprocess.run(
+                ["docker", "info"],
+                capture_output=True, timeout=5,
+            )
+            return True
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            return False
+
+    def _run_in_docker(self, test_file: str) -> str:
+        """
+        Execute pytest inside a disposable Docker container.
+
+        Security measures:
+        - --network none    → no internet access
+        - repo mounted as read-only  → can't modify source files
+        - --rm              → container is deleted after execution
+        - timeout enforced  → prevents infinite loops
+        """
+        # Resolve to absolute paths (Docker requires them for volume mounts)
+        abs_repo = os.path.abspath(self.repo_path)
+        abs_test = os.path.abspath(test_file)
+        test_filename = os.path.basename(test_file)
+
+        # Detect if a requirements.txt exists in the target repo
+        requirements_path = os.path.join(abs_repo, "requirements.txt")
+        install_cmd = "pip install -q pytest"
+        if os.path.exists(requirements_path):
+            install_cmd = "pip install -q pytest -r /app/requirements.txt"
+
+        docker_cmd = [
+            "docker", "run", "--rm",
+            "--network", "none",                           # No internet access
+            "--memory", "256m",                            # Memory limit
+            "-v", f"{abs_repo}:/app:ro",                   # Mount repo read-only
+            "-v", f"{abs_test}:/app/{test_filename}:ro",   # Mount test file read-only
+            "-w", "/app",                                  # Working directory
+            "python:3.12-slim",                            # Lightweight Python image
+            "bash", "-c",
+            f"{install_cmd} 2>/dev/null && python -m pytest /app/{test_filename} -v"
+        ]
+
+        try:
+            result = subprocess.run(
+                docker_cmd,
+                capture_output=True,
+                text=True,
+                timeout=self.SANDBOX_TIMEOUT_SECONDS,
+            )
+            output = (result.stdout or "") + "\n" + (result.stderr or "")
+            passed = result.returncode == 0
+            self.log(f"Test {'PASSED' if passed else 'FAILED'} (exit code {result.returncode})")
+            return f"{'PASSED' if passed else 'FAILED'}\n\n{output.strip()}"
+
+        except subprocess.TimeoutExpired:
+            self.log("⏱️ Test timed out inside Docker sandbox.")
+            return "FAILED\n\nERROR: Test execution timed out (exceeded sandbox limit)."
+
+    def _run_directly(self, test_file: str) -> str:
+        """Fallback: run pytest directly on the host via subprocess."""
+        result = subprocess.run(
+            [sys.executable, "-m", "pytest", test_file, "-v"],
+            cwd=self.repo_path,
+            capture_output=True,
+            text=True,
+            timeout=self.SANDBOX_TIMEOUT_SECONDS,
+        )
+        output = (result.stdout or "") + "\n" + (result.stderr or "")
+        passed = result.returncode == 0
+        self.log(f"Test {'PASSED' if passed else 'FAILED'} (exit code {result.returncode})")
+        return f"{'PASSED' if passed else 'FAILED'}\n\n{output.strip()}"
 
     def submit_test_result(self, test_passed: bool, summary: str) -> str:
         """Captures the LLM's final test verdict into self.test_result_data."""

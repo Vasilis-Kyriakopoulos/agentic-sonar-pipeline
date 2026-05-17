@@ -107,6 +107,7 @@ class TokenUsage(Base):
 # Keys are matched as substrings of the model name (case-insensitive).
 _PRICING: list[tuple[str, float, float]] = [
     # (substring,             input $/1k,  output $/1k)
+    ("gpt-5-nano",             0.000150,    0.000600),
     ("gpt-4o-mini",           0.000150,    0.000600),
     ("gpt-4o",                0.002500,    0.010000),
     ("gpt-4-turbo",           0.010000,    0.030000),

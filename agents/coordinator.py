@@ -32,6 +32,7 @@ class Coordinator:
         repo_path: str,
         max_retries: int = 2,
         db_session=None,
+        allow_unsandboxed: bool = False,
     ):
         self.sonar_client = sonar_client
         self.repo_path = repo_path
@@ -40,7 +41,7 @@ class Coordinator:
 
         # Create agents internally
         self.fixer    = FixerAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
-        self.tester   = TesterAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
+        self.tester   = TesterAgent(model_name=model_name, url=url, token=token, repo_path=repo_path, allow_unsandboxed=allow_unsandboxed)
         self.reviewer = ReviewerAgent(model_name=model_name, url=url, token=token)
         self.evaluator = EvaluatorAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
 
@@ -71,7 +72,12 @@ class Coordinator:
             for agent in (self.fixer, self.tester, self.reviewer, self.evaluator):
                 agent.set_run_context(self.db_session, run_id)
 
+        # --- Pipeline retry loop (no DB writes here) ---
+        result = None
+        final_attempt = 0
+
         for attempt in range(self.max_retries + 1):
+            final_attempt = attempt + 1
             _log(f"\n--- [Attempt {attempt + 1}/{self.max_retries + 1}] for Issue {issue.get('rule')} ---")
 
             source_code = self.sonar_client.fetch_source_code(component_key)
@@ -81,7 +87,8 @@ class Coordinator:
             if not self.fixer.fix_applied:
                 _log("❌ Fix failed during generation.")
                 if attempt == self.max_retries:
-                    return {"status": "FAIL", "reason": "Max retries reached during fix generation"}
+                    result = {"status": "FAIL", "reason": "Max retries reached during fix generation"}
+                    break
                 continue
 
             with open(full_path, "r", encoding="utf-8") as f:
@@ -110,12 +117,8 @@ class Coordinator:
                     evaluation_result.get("overall_score", 0)
                 )
 
-                # --- Persist success to DB ---
-                if self.db_session is not None:
-                    complete_run(self.db_session, run_id, "SUCCESS", attempt + 1)
-                    update_issue_status(self.db_session, issue["key"], "FIXED")
-
-                return {"status": "SUCCESS", "evaluation": evaluation_result, "attempt": attempt + 1}
+                result = {"status": "SUCCESS", "evaluation": evaluation_result, "attempt": final_attempt}
+                break
 
             elif verdict == "RETRY":
                 _log("⚠️ Evaluator requested retry: " + str(evaluation_result.get("reasoning", "")))
@@ -126,23 +129,25 @@ class Coordinator:
             else:
                 _log("❌ Evaluator marked fix as FAIL. Aborting this issue.")
                 self._restore_file(full_path)
+                result = {"status": "FAIL", "reason": "Evaluator verdict was FAIL"}
+                break
 
-                # --- Persist failure to DB ---
-                if self.db_session is not None:
-                    complete_run(self.db_session, run_id, "FAIL", attempt + 1)
-                    update_issue_status(self.db_session, issue["key"], "FAILED")
+        # Exhausted all retries without a conclusive result
+        if result is None:
+            _log("❌ Max retries reached. Issue remains unfixed.")
+            self._restore_file(full_path)
+            result = {"status": "FAIL", "reason": "Max retries reached"}
 
-                return {"status": "FAIL", "reason": "Evaluator verdict was FAIL"}
+        # --- Single point of DB persistence ---
+        if self.db_session is not None and run_id is not None:
+            if result["status"] == "SUCCESS":
+                complete_run(self.db_session, run_id, "SUCCESS", final_attempt)
+                update_issue_status(self.db_session, issue["key"], "FIXED")
+            else:
+                complete_run(self.db_session, run_id, "FAIL", final_attempt)
+                update_issue_status(self.db_session, issue["key"], "FAILED")
 
-        _log("❌ Max retries reached. Issue remains unfixed.")
-        self._restore_file(full_path)
-
-        # --- Persist max-retry failure to DB ---
-        if self.db_session is not None:
-            complete_run(self.db_session, run_id, "FAIL", self.max_retries + 1)
-            update_issue_status(self.db_session, issue["key"], "FAILED")
-
-        return {"status": "FAIL", "reason": "Max retries reached"}
+        return result
 
     def process_all(self, issues: List[dict]) -> List[dict]:
         """Processes all issues and writes a report to report.json."""

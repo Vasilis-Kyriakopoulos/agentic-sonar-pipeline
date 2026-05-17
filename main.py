@@ -123,59 +123,76 @@ def main():
     db.init_db()
     session = db.get_session()
 
-    # 1. Get the repository
-    repo_path = get_repo_path()
+    try:
+        # 1. Get the repository
+        repo_path = get_repo_path()
 
-    # 2. Get the SonarQube project key
-    project_key = get_project_key(repo_path)
+        # 2. Get the SonarQube project key
+        project_key = get_project_key(repo_path)
 
-    # 3. Initialize clients
-    sonar_client = SonarCubeClient(url=SONAR_URL, token=SONAR_TOKEN)
+        # 3. Initialize clients
+        sonar_client = SonarCubeClient(url=SONAR_URL, token=SONAR_TOKEN)
 
-    # 4. Fetch issues
-    logging.info(f"\n📡 Fetching issues for '{project_key}'...")
-    issues = sonar_client.get_issues(project_key)
-    if not issues:
-        logging.info("No issues found! Your code is clean.")
+        # 4. Fetch issues
+        logging.info(f"\n📡 Fetching issues for '{project_key}'...")
+        issues = sonar_client.get_issues(project_key)
+        if not issues:
+            logging.info("No issues found! Your code is clean.")
+            return
+
+        # 4a. Persist fetched issues to the database
+        for issue in issues:
+            db.upsert_issue(session, issue, project_key)
+        logging.info(f"[DB] Synced {len(issues)} issue(s) to the database.")
+
+        # 5. User selects which issues to fix
+        selected_issues = select_issues(issues)
+
+        # 5a. Check if Docker is available for sandboxed test execution
+        allow_unsandboxed = False
+        try:
+            subprocess.run(["docker", "info"], capture_output=True, timeout=5)
+            logging.info("🐳 Docker detected — tests will run in a sandboxed container.")
+        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
+            logging.info("\n⚠️  Docker is NOT available.")
+            logging.info("   LLM-generated tests will run directly on your machine (unsandboxed).")
+            logging.info("   This means the AI-generated code could access your file system and network.\n")
+            choice = input("Do you want to allow unsandboxed test execution? (y/N): ").strip().lower()
+            if choice in ("y", "yes"):
+                allow_unsandboxed = True
+                logging.info("✅ Unsandboxed execution approved by user.")
+            else:
+                logging.info("🚫 Unsandboxed execution denied. Tests will be skipped.")
+
+        # 6. Initialize Coordinator (creates all agents internally)
+        coordinator = Coordinator(
+            sonar_client=sonar_client,
+            model_name=MODEL,
+            url=MODEL_BASE_URL,
+            token=LLM_API_KEY,
+            repo_path=repo_path,
+            db_session=session,
+            allow_unsandboxed=allow_unsandboxed,
+        )
+
+        # 7. Setup a single branch for this session
+        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        session_branch = f"fix/sonar-session-{timestamp}"
+        if not coordinator.fixer.setup_fix_branch(session_branch):
+            logging.info("❌ Failed to setup git branch. Exiting.")
+            return
+
+        # 8. Process selected issues
+        results = coordinator.process_all(selected_issues)
+
+        # 9. Print pipeline summary
+        print_summary(results, session_branch)
+
+        # 10. Print analytics report from the database
+        print_analytics(session)
+
+    finally:
         session.close()
-        return
-
-    # 4a. Persist fetched issues to the database
-    for issue in issues:
-        db.upsert_issue(session, issue, project_key)
-    logging.info(f"[DB] Synced {len(issues)} issue(s) to the database.")
-
-    # 5. User selects which issues to fix
-    selected_issues = select_issues(issues)
-
-    # 6. Initialize Coordinator (creates all agents internally)
-    coordinator = Coordinator(
-        sonar_client=sonar_client,
-        model_name=MODEL,
-        url=MODEL_BASE_URL,
-        token=LLM_API_KEY,
-        repo_path=repo_path,
-        db_session=session,
-    )
-
-    # 7. Setup a single branch for this session
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    session_branch = f"fix/sonar-session-{timestamp}"
-    if not coordinator.fixer.setup_fix_branch(session_branch):
-        logging.info("❌ Failed to setup git branch. Exiting.")
-        session.close()
-        return
-
-    # 8. Process selected issues
-    results = coordinator.process_all(selected_issues)
-
-    # 9. Print pipeline summary
-    print_summary(results, session_branch)
-
-    # 10. Print analytics report from the database
-    print_analytics(session)
-
-    session.close()
 
 
 def print_summary(results: list, branch: str) -> None:

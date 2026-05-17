@@ -95,6 +95,38 @@ class Agent:
 
         return response
 
+    def _tracked_parse(self, **kwargs):
+        """
+        Wrapper around client.beta.chat.completions.parse() that automatically
+        logs token usage to the DB — identical telemetry to _tracked_call but
+        for structured (Pydantic) output calls.
+        """
+        response = self.client.beta.chat.completions.parse(**kwargs)
+
+        # --- Token telemetry ---
+        usage = getattr(response, "usage", None)
+        if usage:
+            prompt_tokens     = getattr(usage, "prompt_tokens", 0) or 0
+            completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+
+            if self.db_session is not None:
+                from database import log_token_usage
+                log_token_usage(
+                    session=self.db_session,
+                    agent_name=self.name,
+                    model_name=self.model_name,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    run_id=self.run_id,
+                )
+            else:
+                self.log(
+                    f"Token usage (no DB): prompt={prompt_tokens}, "
+                    f"completion={completion_tokens}"
+                )
+
+        return response
+
     def get_tools(self) -> list:
         """
         Override this to return a list of OpenAI tool definitions.

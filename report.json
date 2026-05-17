@@ -1,36 +1,111 @@
 [
     {
         "issue": {
-            "key": "718c9fd5-4910-4f38-b409-8ae3351c5fd7",
-            "rule": "python:S3984",
+            "key": "ecca32cf-33b2-47f0-a2bf-046ca332bedc",
+            "rule": "python:S112",
             "severity": "MAJOR",
             "component": "vulnerable-python-repo:pokedex/helper.py",
             "project": "vulnerable-python-repo",
-            "line": 36,
-            "hash": "3a82cde9f89ec0b0691e27707549f4b9",
+            "line": 20,
+            "hash": "3c024a741ac3b59dfb6c8fb8e0519663",
             "textRange": {
-                "startLine": 36,
-                "endLine": 36,
-                "startOffset": 8,
-                "endOffset": 36
+                "startLine": 20,
+                "endLine": 20,
+                "startOffset": 18,
+                "endOffset": 57
             },
             "flows": [],
             "status": "REOPENED",
-            "message": "Raise this exception or remove this useless statement.",
-            "effort": "2min",
-            "debt": "2min",
+            "message": "Replace this generic exception class with a more specific one.",
+            "effort": "20min",
+            "debt": "20min",
             "author": "guillaume.dequenne@sonarsource.com",
             "tags": [
+                "cwe",
                 "error-handling"
             ],
             "creationDate": "2022-04-25T14:40:06+0000",
-            "updateDate": "2026-05-17T09:38:16+0000",
+            "updateDate": "2026-05-09T10:36:53+0000",
+            "type": "CODE_SMELL",
+            "scope": "MAIN",
+            "quickFixAvailable": false,
+            "messageFormattings": [],
+            "codeVariants": [],
+            "cleanCodeAttribute": "COMPLETE",
+            "cleanCodeAttributeCategory": "INTENTIONAL",
+            "impacts": [
+                {
+                    "softwareQuality": "MAINTAINABILITY",
+                    "severity": "MEDIUM"
+                }
+            ],
+            "issueStatus": "OPEN",
+            "prioritizedRule": false,
+            "fromSonarQubeUpdate": false,
+            "internalTags": [],
+            "linkedTicketStatus": "NOT_LINKED"
+        },
+        "result": {
+            "status": "SUCCESS",
+            "evaluation": {
+                "correctness_score": 8,
+                "safety_score": 9,
+                "readability_score": 9,
+                "verdict": "PASS",
+                "reasoning": "The fix replaces the generic Exception raise with a more specific sqlite3.DatabaseError whenever a low-level database error occurs, aligning with SonarQube rule S112. It preserves the original traceback via exception chaining (from e), and still raises ValueError for integrity violations. Tests pass and behavior remains consistent for valid inputs. Minor potential improvement could be re-raising the original exception or introducing a dedicated custom exception to further clarify error handling, but the current approach is correct, safe, and readable. No new security issues were introduced.",
+                "overall_score": 8.7
+            },
+            "attempt": 1
+        }
+    },
+    {
+        "issue": {
+            "key": "0d45f0d1-8082-4670-9f50-45b81017462a",
+            "rule": "python:S1045",
+            "severity": "MAJOR",
+            "component": "vulnerable-python-repo:pokedex/helper.py",
+            "project": "vulnerable-python-repo",
+            "line": 21,
+            "hash": "a55dc09450db74cdcba2b24809139e3f",
+            "textRange": {
+                "startLine": 21,
+                "endLine": 21,
+                "startOffset": 15,
+                "endOffset": 37
+            },
+            "flows": [
+                {
+                    "locations": [
+                        {
+                            "component": "vulnerable-python-repo:pokedex/helper.py",
+                            "textRange": {
+                                "startLine": 19,
+                                "endLine": 19,
+                                "startOffset": 15,
+                                "endOffset": 36
+                            },
+                            "msg": "Exceptions will be caught here.",
+                            "msgFormattings": []
+                        }
+                    ]
+                }
+            ],
+            "status": "REOPENED",
+            "message": "Catch this exception only once; it is already handled by a previous except clause.",
+            "effort": "5min",
+            "debt": "5min",
+            "author": "guillaume.dequenne@sonarsource.com",
+            "tags": [
+                "suspicious"
+            ],
+            "creationDate": "2022-04-25T14:40:06+0000",
+            "updateDate": "2026-05-17T09:38:17+0000",
             "type": "BUG",
             "scope": "MAIN",
             "quickFixAvailable": false,
             "messageFormattings": [],
             "codeVariants": [],
-            "cleanCodeAttribute": "CLEAR",
+            "cleanCodeAttribute": "LOGICAL",
             "cleanCodeAttributeCategory": "INTENTIONAL",
             "impacts": [
                 {
@@ -45,55 +120,47 @@
             "linkedTicketStatus": "NOT_LINKED"
         },
         "result": {
-            "status": "SUCCESS",
-            "evaluation": {
-                "correctness_score": 9,
-                "safety_score": 9,
-                "readability_score": 8,
-                "verdict": "PASS",
-                "reasoning": "The fix correctly addresses the SonarQube S3984 issue by converting the no-op raise into an actual raise for invalid emails. Previously, the code attempted to raise ValueError without using the raise keyword, leaving a useless statement. The updated code now raises ValueError('Invalid email!') when the email does not match the pattern, and proceeds to register the subscriber otherwise. This aligns with expected behavior and preserves existing error handling (DatabaseError -> generic exception; IntegrityError -> ValueError). Environment issues prevented actual test execution, but the logical change is sound and isolated, with no new security concerns. Readability is good, though there is room for minor enhancements (e.g., extracting validation to a helper or improving the regex/docstring).",
-                "overall_score": 8.7
-            },
-            "attempt": 1
+            "status": "FAIL",
+            "reason": "Max retries reached during fix generation"
         }
     },
     {
         "issue": {
-            "key": "be8b0f9a-2ed5-46f2-8483-927fec5bb8d8",
-            "rule": "python:S2772",
-            "severity": "MINOR",
-            "component": "vulnerable-python-repo:pokedex/helper.py",
+            "key": "a0fce933-6dd2-42ba-9ef1-c9bc497a77d1",
+            "rule": "python:S6965",
+            "severity": "MAJOR",
+            "component": "vulnerable-python-repo:pokedex/app.py",
             "project": "vulnerable-python-repo",
-            "line": 38,
-            "hash": "1a1dc91c907325c69271ddf0c944bc72",
+            "line": 9,
+            "hash": "f98291e1a2d0a909b0b4e910ce29a5aa",
             "textRange": {
-                "startLine": 38,
-                "endLine": 38,
-                "startOffset": 4,
-                "endOffset": 8
+                "startLine": 9,
+                "endLine": 9,
+                "startOffset": 0,
+                "endOffset": 15
             },
             "flows": [],
             "status": "REOPENED",
-            "message": "Remove this unneeded \"pass\".",
-            "effort": "2min",
-            "debt": "2min",
+            "message": "Specify the HTTP methods this route should accept.",
+            "effort": "5min",
+            "debt": "5min",
             "author": "guillaume.dequenne@sonarsource.com",
             "tags": [
-                "confusing"
+                "flask"
             ],
-            "creationDate": "2022-04-25T14:40:06+0000",
-            "updateDate": "2026-05-17T09:38:18+0000",
+            "creationDate": "2022-04-25T14:38:30+0000",
+            "updateDate": "2026-05-09T10:36:51+0000",
             "type": "CODE_SMELL",
             "scope": "MAIN",
             "quickFixAvailable": false,
             "messageFormattings": [],
             "codeVariants": [],
-            "cleanCodeAttribute": "CLEAR",
-            "cleanCodeAttributeCategory": "INTENTIONAL",
+            "cleanCodeAttribute": "CONVENTIONAL",
+            "cleanCodeAttributeCategory": "CONSISTENT",
             "impacts": [
                 {
                     "softwareQuality": "MAINTAINABILITY",
-                    "severity": "LOW"
+                    "severity": "MEDIUM"
                 }
             ],
             "issueStatus": "OPEN",
@@ -109,7 +176,7 @@
                 "safety_score": 9,
                 "readability_score": 9,
                 "verdict": "PASS",
-                "reasoning": "The fix corrects a real bug: the original code attempted to raise an error for invalid emails but failed to actually raise it (it only constructed a ValueError). The updated function now raises ValueError(\"Invalid email!\") when the email does not match the regex, ensuring invalid inputs do not reach the database wrapper. Valid emails proceed to wrapper.register_subscriber as intended. This preserves the existing behavior for valid inputs and keeps the API contract intact (the same error type/message on invalid input). The stray 'pass' was removed, improving clarity. Tests (as described) would verify: - fetch_all_pokemons delegates to wrapper.get_all_pokemons; - invalid emails raise ValueError without touching the wrapper; - valid emails call wrapper.register_subscriber with the correct argument. The environment issue noted in testing appears unrelated to the code change (a Windows path limitation with test filenames); in a proper environment, the tests should pass. Suggested future improvements from reviewers (type hints, precompiled regex, minor docstrings) are optional enhancements but not necessary for correctness. Overall, this patch fixes the SonarQube S2772 issue without introducing safety risks or readability problems, yielding a solid PASS. ",
+                "reasoning": "The fix explicitly restricts the index route to GET by adding methods=[\"GET\"], addressing the SonarQube rule S6965 to specify HTTP methods for routes. This change is non-disruptive: no business logic altered, and the subscribe route remains POST only as intended. Tests continue to pass, including checks for the index route being GET-only and the subscribe route still accepting POST. There are no new security concerns or side effects; the explicit declaration improves clarity and maintainability without changing behavior beyond making the allowed method explicit.",
                 "overall_score": 9.0
             },
             "attempt": 1

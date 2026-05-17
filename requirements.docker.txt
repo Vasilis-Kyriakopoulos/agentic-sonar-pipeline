@@ -1,0 +1,12 @@
+# requirements.docker.txt
+# Lean dependency list for the Docker image — only what the pipeline uses.
+# (The full pyproject.toml has torch, transformers, etc. which are NOT needed here.)
+
+openai>=1.109.0
+requests>=2.32.0
+python-dotenv>=1.1.0
+pydantic>=2.0.0
+sqlalchemy>=2.0.0
+pytest>=9.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
