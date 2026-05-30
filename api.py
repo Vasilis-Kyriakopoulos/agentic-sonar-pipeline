@@ -26,7 +26,27 @@ import database as db
 # Configuration
 # ---------------------------------------------------------------------------
 
-logging.basicConfig(level=logging.INFO, format="%(message)s")
+def configure_clean_logging():
+    # Clear root logger handlers and add exactly one StreamHandler
+    root = logging.getLogger()
+    for h in list(root.handlers):
+        root.removeHandler(h)
+    
+    import sys
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(logging.Formatter("%(message)s"))
+    root.addHandler(stdout_handler)
+    root.setLevel(logging.INFO)
+
+    # Clear handlers from other loggers and let them propagate to the root logger
+    for logger_name in ["uvicorn", "uvicorn.error", "uvicorn.access", "httpx"]:
+        logger = logging.getLogger(logger_name)
+        for h in list(logger.handlers):
+            logger.removeHandler(h)
+        logger.propagate = True
+
+# Apply clean logging immediately
+configure_clean_logging()
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 load_dotenv()
@@ -79,6 +99,18 @@ class PipelineResponse(BaseModel):
     message: str
 
 
+class ScanRequest(BaseModel):
+    """Request body for running a SonarQube scan on a repository."""
+    repo_url: Optional[str] = Field(None, description="Git URL to clone.")
+    repo_path: Optional[str] = Field(None, description="Path to an already-cloned repo inside the container.")
+    project_key: str = Field(..., description="SonarQube project key.")
+
+
+class ScanResponse(BaseModel):
+    status: str
+    message: str
+
+
 class SessionStatus(BaseModel):
     session_id: str
     status: str
@@ -96,6 +128,16 @@ class SessionStatus(BaseModel):
 
 @app.on_event("startup")
 def startup():
+    # Re-apply clean logging configuration to clear any handlers added by Uvicorn during startup
+    configure_clean_logging()
+
+    # Diagnostic logging inspection
+    import sys
+    for name in ["", "uvicorn", "uvicorn.error", "uvicorn.access"]:
+        l = logging.getLogger(name)
+        logging.info(f"DEBUG_LOG_LOGGER '{name}': handlers={l.handlers}, propagate={l.propagate}")
+    sys.stdout.flush()
+
     db.init_db()
     logging.info("[API] Database initialized.")
     logging.info(f"[API] Repos directory: {REPOS_DIR}")
@@ -123,6 +165,40 @@ def get_issues(project_key: str):
         return {"project_key": project_key, "total": len(issues), "issues": issues}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/scan", response_model=ScanResponse, tags=["Pipeline"])
+def scan_project(request: ScanRequest):
+    """Clone repository (if needed) and run a SonarQube scan."""
+    # --- Resolve repository path ---
+    if request.repo_url:
+        repo_name = request.repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+        repo_path = os.path.join(REPOS_DIR, repo_name)
+        if not os.path.isdir(repo_path):
+            try:
+                subprocess.run(
+                    ["git", "clone", request.repo_url, repo_path],
+                    check=True, capture_output=True, text=True,
+                )
+            except subprocess.CalledProcessError as e:
+                raise HTTPException(status_code=400, detail=f"Git clone failed: {e.stderr}")
+    elif request.repo_path:
+        repo_path = request.repo_path
+        if not os.path.isdir(repo_path):
+            raise HTTPException(status_code=400, detail=f"Directory not found: {repo_path}")
+    else:
+        raise HTTPException(status_code=400, detail="Provide either repo_url or repo_path.")
+
+    # --- Run SonarQube scan ---
+    try:
+        sonar_client = SonarCubeClient(url=SONAR_URL, token=SONAR_TOKEN)
+        sonar_client.run_scan(repo_path, request.project_key)
+        return ScanResponse(
+            status="SUCCESS",
+            message=f"SonarQube scan completed successfully for '{request.project_key}'!",
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"SonarQube scan failed: {str(e)}")
 
 
 @app.post("/pipeline/run", response_model=PipelineResponse, tags=["Pipeline"])
@@ -253,7 +329,7 @@ def _run_pipeline_background(
 
         sessions[session_id]["total_issues"] = len(selected_issues)
 
-        # Docker is always available inside the docker-compose setup
+        # Tests run directly inside the container — no additional sandboxing needed
         coordinator = Coordinator(
             sonar_client=sonar_client,
             model_name=MODEL,
@@ -261,7 +337,6 @@ def _run_pipeline_background(
             token=LLM_API_KEY,
             repo_path=repo_path,
             db_session=db_session,
-            allow_unsandboxed=False,  # Always sandboxed in Docker
         )
 
         # Setup branch

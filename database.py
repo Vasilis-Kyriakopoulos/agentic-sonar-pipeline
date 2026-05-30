@@ -48,7 +48,7 @@ class IssueRecord(Base):
     line            = Column(Integer)
     message         = Column(Text)
     type            = Column(String)
-    tags            = Column(Text)    # JSON-serialised list[str]
+    tags            = Column(Text) 
     project_key     = Column(String)
 
     # Lifecycle: OPEN → FIXED | FAILED

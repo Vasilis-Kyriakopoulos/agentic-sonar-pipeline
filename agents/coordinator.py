@@ -32,7 +32,6 @@ class Coordinator:
         repo_path: str,
         max_retries: int = 2,
         db_session=None,
-        allow_unsandboxed: bool = False,
     ):
         self.sonar_client = sonar_client
         self.repo_path = repo_path
@@ -41,7 +40,7 @@ class Coordinator:
 
         # Create agents internally
         self.fixer    = FixerAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
-        self.tester   = TesterAgent(model_name=model_name, url=url, token=token, repo_path=repo_path, allow_unsandboxed=allow_unsandboxed)
+        self.tester   = TesterAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
         self.reviewer = ReviewerAgent(model_name=model_name, url=url, token=token)
         self.evaluator = EvaluatorAgent(model_name=model_name, url=url, token=token, repo_path=repo_path)
 

@@ -1,18 +1,22 @@
 
 FROM python:3.12-slim
 
-# Install git + Docker CLI (for sandboxed test execution)
+# Install git, java, curl, and unzip (java is needed by sonar-scanner)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
+    default-jre-headless \
     curl \
-    ca-certificates \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
-    && chmod a+r /etc/apt/keyrings/docker.asc \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
-    > /etc/apt/sources.list.d/docker.list \
-    && apt-get update && apt-get install -y --no-install-recommends docker-ce-cli \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Download and install sonar-scanner-cli
+RUN curl -o /tmp/sonar-scanner.zip -L https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.2.1.4610.zip \
+    && unzip /tmp/sonar-scanner.zip -d /opt \
+    && mv /opt/sonar-scanner-6.2.1.4610 /opt/sonar-scanner \
+    && rm /tmp/sonar-scanner.zip
+
+# Add sonar-scanner to PATH
+ENV PATH="/opt/sonar-scanner/bin:${PATH}"
 
 WORKDIR /app
 
@@ -30,7 +34,10 @@ COPY . .
 # Create repos directory for cloned repositories
 RUN mkdir -p /app/repos
 
-EXPOSE 8000
+# Make startup script executable
+RUN chmod +x start.sh
 
-# Run the FastAPI app
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8000 8501
+
+# Run both FastAPI (8000) and Streamlit (8501)
+CMD ["./start.sh"]

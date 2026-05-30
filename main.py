@@ -148,22 +148,6 @@ def main():
         # 5. User selects which issues to fix
         selected_issues = select_issues(issues)
 
-        # 5a. Check if Docker is available for sandboxed test execution
-        allow_unsandboxed = False
-        try:
-            subprocess.run(["docker", "info"], capture_output=True, timeout=5)
-            logging.info("🐳 Docker detected — tests will run in a sandboxed container.")
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
-            logging.info("\n⚠️  Docker is NOT available.")
-            logging.info("   LLM-generated tests will run directly on your machine (unsandboxed).")
-            logging.info("   This means the AI-generated code could access your file system and network.\n")
-            choice = input("Do you want to allow unsandboxed test execution? (y/N): ").strip().lower()
-            if choice in ("y", "yes"):
-                allow_unsandboxed = True
-                logging.info("✅ Unsandboxed execution approved by user.")
-            else:
-                logging.info("🚫 Unsandboxed execution denied. Tests will be skipped.")
-
         # 6. Initialize Coordinator (creates all agents internally)
         coordinator = Coordinator(
             sonar_client=sonar_client,
@@ -172,7 +156,6 @@ def main():
             token=LLM_API_KEY,
             repo_path=repo_path,
             db_session=session,
-            allow_unsandboxed=allow_unsandboxed,
         )
 
         # 7. Setup a single branch for this session
