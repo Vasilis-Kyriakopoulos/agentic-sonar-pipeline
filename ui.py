@@ -86,6 +86,19 @@ st.markdown("""
     .badge-fail { background: rgba(239,68,68,0.15); color: #ef4444; }
     .badge-retry { background: rgba(245,158,11,0.15); color: #f59e0b; }
     .badge-progress { background: rgba(59,130,246,0.15); color: #3b82f6; }
+    .badge-verified { background: rgba(16,185,129,0.25); color: #059669; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-unverified { background: rgba(239,68,68,0.25); color: #dc2626; border: 1px solid rgba(239,68,68,0.3); }
+
+    /* Verification card */
+    .verify-card {
+        background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,0.1);
+        margin: 1rem 0;
+    }
+    .verify-card h4 { color: #e2e8f0; margin: 0 0 0.5rem 0; }
+    .verify-card p { color: #94a3b8; margin: 0.25rem 0; }
 
     /* Hide Streamlit branding */
     #MainMenu {visibility: hidden;}
@@ -200,6 +213,30 @@ if page == "🏠 Dashboard":
                 unsafe_allow_html=True,
             )
 
+        # Verification metrics row
+        v1, v2, v3 = st.columns(3)
+        with v1:
+            st.markdown(
+                f'<div class="metric-card">'
+                f'<div class="value" style="color:#059669">{analytics.get("verified", 0)}</div>'
+                f'<div class="label">Verified Fixes ✅</div></div>',
+                unsafe_allow_html=True,
+            )
+        with v2:
+            st.markdown(
+                f'<div class="metric-card">'
+                f'<div class="value" style="color:#dc2626">{analytics.get("verification_failed", 0)}</div>'
+                f'<div class="label">Verification Failed ⚠️</div></div>',
+                unsafe_allow_html=True,
+            )
+        with v3:
+            st.markdown(
+                f'<div class="metric-card">'
+                f'<div class="value" style="color:#8892b0">{analytics.get("pending_verification", 0)}</div>'
+                f'<div class="label">Pending Verification</div></div>',
+                unsafe_allow_html=True,
+            )
+
         st.markdown("---")
 
         # Cost & usage
@@ -228,9 +265,19 @@ if page == "🏠 Dashboard":
         for run in runs:
             verdict = run.get("verdict", "UNKNOWN")
             badge_cls = {"SUCCESS": "badge-pass", "FAIL": "badge-fail", "IN_PROGRESS": "badge-progress"}.get(verdict, "badge-retry")
+
+            # Verification badge
+            verified = run.get("verified")
+            if verified is True:
+                verify_badge = ' <span class="badge badge-verified">VERIFIED</span>'
+            elif verified is False:
+                verify_badge = ' <span class="badge badge-unverified">UNVERIFIED</span>'
+            else:
+                verify_badge = ""
+
             st.markdown(
                 f'<div class="issue-row">'
-                f'<span class="badge {badge_cls}">{verdict}</span> '
+                f'<span class="badge {badge_cls}">{verdict}</span>{verify_badge} '
                 f'<strong>Run #{run["id"]}</strong> — Issue: <code>{run["issue_key"][:12]}…</code> '
                 f'— Attempts: {run["attempts"]} '
                 f'— {run.get("started_at", "")[:19]}'
@@ -372,6 +419,13 @@ elif page == "🚀 Run Pipeline":
                 # Auto-refresh every 5 seconds
                 time.sleep(5)
                 st.rerun()
+            elif s == "VERIFYING":
+                progress_placeholder.progress(
+                    1.0,
+                    text="🔍 Running verification scan..."
+                )
+                time.sleep(5)
+                st.rerun()
             elif s == "COMPLETED":
                 progress_placeholder.progress(1.0, text="✅ Pipeline completed!")
             elif s == "FAILED":
@@ -411,6 +465,82 @@ elif page == "🚀 Run Pipeline":
                     if reasoning:
                         with st.expander(f"Evaluator reasoning — {issue.get('rule', '')}"):
                             st.markdown(reasoning)
+
+            # --- Step 5: Verification Results ---
+            verification = status.get("verification")
+            if verification:
+                st.markdown("### 🔍 Verification Results")
+
+                v_status = verification.get("status", "UNKNOWN")
+                if v_status == "SUCCESS":
+                    st.success(verification.get("message", "All fixes verified!"))
+                elif v_status == "PARTIAL":
+                    st.warning(verification.get("message", "Some fixes could not be verified."))
+                elif v_status == "FAILED":
+                    st.error(verification.get("message", "Verification failed."))
+
+                vc1, vc2, vc3 = st.columns(3)
+                vc1.metric("Verified ✅", len(verification.get("verified", [])))
+                vc2.metric("Still Open ⚠️", len(verification.get("still_open", [])))
+                vc3.metric("New Issues", verification.get("new_issues", 0))
+
+                # Show details in expander
+                if verification.get("verified"):
+                    with st.expander("Verified issue keys"):
+                        for k in verification["verified"]:
+                            st.markdown(f"- `{k}` ✅")
+                if verification.get("still_open"):
+                    with st.expander("Still open issue keys"):
+                        for k in verification["still_open"]:
+                            st.markdown(f"- `{k}` ⚠️")
+
+            elif s == "COMPLETED":
+                # Offer manual verification if auto-verify didn't run
+                st.markdown("---")
+                st.subheader("🔍 Verification")
+                st.info("No automatic verification was run (no successful fixes or verification skipped).")
+
+                # Build manual verify payload from session results
+                fixed_keys_from_session = [
+                    entry.get("issue", {}).get("key")
+                    for entry in status.get("results", [])
+                    if entry.get("result", {}).get("status") == "SUCCESS"
+                    and entry.get("issue", {}).get("key")
+                ]
+
+                if fixed_keys_from_session:
+                    if st.button("🔍 Run Verification Scan", type="secondary", use_container_width=True):
+                        verify_payload = {
+                            "project_key": status["project_key"],
+                            "issue_keys": fixed_keys_from_session,
+                        }
+                        # Use repo_path from the session store if available
+                        if repo_path:
+                            verify_payload["repo_path"] = repo_path
+                        elif repo_url:
+                            verify_payload["repo_url"] = repo_url
+
+                        with st.spinner("Running verification scan (this may take up to 2 minutes)..."):
+                            vr = api_post("/pipeline/verify", verify_payload)
+                        if vr:
+                            st.session_state["manual_verification"] = vr
+                            st.rerun()
+
+                # Show manual verification results if stored
+                if "manual_verification" in st.session_state:
+                    vr = st.session_state["manual_verification"]
+                    v_status = vr.get("status", "UNKNOWN")
+                    if v_status == "SUCCESS":
+                        st.success(vr.get("message", ""))
+                    elif v_status == "PARTIAL":
+                        st.warning(vr.get("message", ""))
+                    else:
+                        st.error(vr.get("message", ""))
+
+                    vc1, vc2, vc3 = st.columns(3)
+                    vc1.metric("Verified ✅", len(vr.get("verified", [])))
+                    vc2.metric("Still Open ⚠️", len(vr.get("still_open", [])))
+                    vc3.metric("New Issues", vr.get("new_issues", 0))
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -480,6 +610,12 @@ elif page == "📊 Analytics":
         c4.metric("Open ⏳", analytics["open"])
         c5.metric("Success Rate", f"{analytics['success_rate_pct']}%")
 
+        # Verification row
+        v1, v2, v3 = st.columns(3)
+        v1.metric("Verified ✅", analytics.get("verified", 0))
+        v2.metric("Verification Failed ⚠️", analytics.get("verification_failed", 0))
+        v3.metric("Pending Verification", analytics.get("pending_verification", 0))
+
         st.divider()
 
         col_a, col_b = st.columns(2)
@@ -516,8 +652,9 @@ elif page == "📊 Analytics":
             import pandas as pd
             df = pd.DataFrame(runs)
             if not df.empty:
-                df = df[["id", "issue_key", "verdict", "attempts", "started_at", "completed_at"]]
-                df.columns = ["Run ID", "Issue Key", "Verdict", "Attempts", "Started", "Completed"]
+                df = df[["id", "issue_key", "verdict", "attempts", "verified", "started_at", "completed_at"]]
+                df["verified"] = df["verified"].map({True: "✅", False: "❌", None: "—"})
+                df.columns = ["Run ID", "Issue Key", "Verdict", "Attempts", "Verified", "Started", "Completed"]
                 st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.info("No pipeline runs yet.")

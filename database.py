@@ -73,6 +73,9 @@ class PipelineRun(Base):
     verdict        = Column(String, default="IN_PROGRESS")
     attempts       = Column(Integer, default=0)
 
+    # Post-fix verification: None = not verified, True = confirmed fixed, False = still open
+    verified       = Column(Integer, nullable=True, default=None)
+
     started_at     = Column(DateTime, default=datetime.utcnow)
     completed_at   = Column(DateTime)
 
@@ -196,7 +199,20 @@ def update_issue_status(session: Session, issue_key: str, status: str) -> None:
         logging.warning("[DB] update_issue_status: issue '%s' not found.", issue_key)
 
 
+def get_in_progress_issues(session: Session, issue_keys: list[str]) -> list[str]:
+    """
+    Given a list of issue keys, returns the subset of keys that are currently
+    associated with an active pipeline run (where PipelineRun.verdict == 'IN_PROGRESS').
+    If 'all' is present in issue_keys, checks all active runs.
+    """
+    query = session.query(PipelineRun.issue_key).filter(PipelineRun.verdict == "IN_PROGRESS")
+    if "all" not in issue_keys:
+        query = query.filter(PipelineRun.issue_key.in_(issue_keys))
+    return [r.issue_key for r in query.all()]
+
+
 # ---------------------------------------------------------------------------
+
 # Pipeline run helpers
 # ---------------------------------------------------------------------------
 
@@ -225,6 +241,37 @@ def complete_run(session: Session, run_id: int, verdict: str, attempts: int) -> 
         logging.info("[DB] Run #%d completed → %s (%d attempt(s))", run_id, verdict, attempts)
     else:
         logging.warning("[DB] complete_run: run_id %d not found.", run_id)
+
+
+def mark_run_verified(session: Session, run_id: int, verified: bool) -> None:
+    """Update the verification status of a pipeline run after a re-scan."""
+    run = session.query(PipelineRun).filter_by(id=run_id).first()
+    if run:
+        run.verified = 1 if verified else 0
+        session.commit()
+        status_str = "VERIFIED ✅" if verified else "STILL OPEN "
+        logging.info("[DB] Run #%d verification → %s", run_id, status_str)
+    else:
+        logging.warning("[DB] mark_run_verified: run_id %d not found.", run_id)
+
+
+def get_latest_successful_runs(session: Session, issue_keys: list[str]) -> list[PipelineRun]:
+    """
+    For each issue key, return the most recent pipeline run with verdict='SUCCESS'.
+    Used by the verification step to update the right runs.
+    """
+    from sqlalchemy import desc
+    runs = []
+    for key in issue_keys:
+        run = (
+            session.query(PipelineRun)
+            .filter_by(issue_key=key, verdict="SUCCESS")
+            .order_by(desc(PipelineRun.id))
+            .first()
+        )
+        if run:
+            runs.append(run)
+    return runs
 
 
 # ---------------------------------------------------------------------------
@@ -319,15 +366,29 @@ def get_analytics(session: Session) -> dict:
     ).group_by(TokenUsage.agent_name).all():
         cost_by_agent[agent_name] = round(float(cost), 6)
 
+    # Verification stats
+    verified_count = session.query(func.count(PipelineRun.id)).filter(
+        PipelineRun.verdict == "SUCCESS", PipelineRun.verified == 1
+    ).scalar() or 0
+    unverified_count = session.query(func.count(PipelineRun.id)).filter(
+        PipelineRun.verdict == "SUCCESS", PipelineRun.verified == 0
+    ).scalar() or 0
+    pending_verification = session.query(func.count(PipelineRun.id)).filter(
+        PipelineRun.verdict == "SUCCESS", PipelineRun.verified.is_(None)
+    ).scalar() or 0
+
     return {
-        "total_issues":     total_issues,
-        "fixed":            fixed,
-        "failed":           failed,
-        "open":             open_,
-        "success_rate_pct": success_rate,
-        "total_runs":       total_runs,
-        "avg_attempts":     avg_attempts,
-        "total_tokens":     total_tokens,
-        "total_cost_usd":   total_cost,
-        "cost_by_agent":    cost_by_agent,
+        "total_issues":          total_issues,
+        "fixed":                 fixed,
+        "failed":                failed,
+        "open":                  open_,
+        "success_rate_pct":      success_rate,
+        "total_runs":            total_runs,
+        "avg_attempts":          avg_attempts,
+        "total_tokens":          total_tokens,
+        "total_cost_usd":        total_cost,
+        "cost_by_agent":         cost_by_agent,
+        "verified":              verified_count,
+        "verification_failed":   unverified_count,
+        "pending_verification":  pending_verification,
     }

@@ -8,7 +8,11 @@ from agents.fixer import FixerAgent
 from agents.tester import TesterAgent
 from agents.reviewer import ReviewerAgent
 from agents.evaluator import EvaluatorAgent
-from database import create_run, complete_run, update_issue_status
+from database import (
+    create_run, complete_run, update_issue_status,
+    mark_run_verified, get_latest_successful_runs,
+)
+
 
 # Coordinator colors (not an Agent, so we define them locally)
 _CYAN = '\033[36m'
@@ -166,3 +170,98 @@ class Coordinator:
         _log(f"\n📊 Report saved to {os.path.abspath(report_path)}")
 
         return results
+
+    def verify_fixes(self, project_key: str, fixed_issue_keys: list[str]) -> dict:
+        """
+        Re-run a SonarQube scan and verify which of the fixed issues are truly gone.
+
+        Args:
+            project_key: The SonarQube project key.
+            fixed_issue_keys: Issue keys that were marked as SUCCESS during the pipeline.
+
+        Returns:
+            {
+                "status": "SUCCESS" | "PARTIAL" | "FAILED",
+                "verified": [keys confirmed gone],
+                "still_open": [keys still present],
+                "new_issues": count of new issues,
+                "message": human-readable summary,
+            }
+        """
+        _log("\n======================================")
+        _log("🔍 Running verification scan...")
+        _log("======================================")
+
+        if not fixed_issue_keys:
+            _log("No issues to verify — skipping.")
+            return {
+                "status": "SUCCESS",
+                "verified": [],
+                "still_open": [],
+                "new_issues": 0,
+                "message": "No issues to verify.",
+            }
+
+        # 1. Run scan and wait for CE task to complete
+        try:
+            scan_ok = self.sonar_client.run_scan_and_wait(self.repo_path, project_key)
+            if not scan_ok:
+                _log("⚠️ Scan timed out waiting for analysis — results may be stale.")
+        except Exception as e:
+            _log(f"❌ Verification scan failed: {e}")
+            return {
+                "status": "FAILED",
+                "verified": [],
+                "still_open": fixed_issue_keys,
+                "new_issues": 0,
+                "message": f"Verification scan failed: {e}",
+            }
+
+        # 2. Re-fetch all issues
+        post_scan_issues = self.sonar_client.get_issues(project_key)
+        post_scan_keys = {issue["key"] for issue in post_scan_issues}
+
+        # 3. Compare
+        verified = [k for k in fixed_issue_keys if k not in post_scan_keys]
+        still_open = [k for k in fixed_issue_keys if k in post_scan_keys]
+
+        # Count issues that weren't in the original set (possible new findings)
+        new_issues = len(post_scan_keys - set(fixed_issue_keys))
+
+        # 4. Update DB records
+        if self.db_session is not None:
+            successful_runs = get_latest_successful_runs(self.db_session, fixed_issue_keys)
+            run_map = {run.issue_key: run for run in successful_runs}
+
+            for key in verified:
+                if key in run_map:
+                    mark_run_verified(self.db_session, run_map[key].id, True)
+            for key in still_open:
+                if key in run_map:
+                    mark_run_verified(self.db_session, run_map[key].id, False)
+
+        # 5. Build result
+        if not still_open:
+            status = "SUCCESS"
+            msg = f"✅ All {len(verified)} fix(es) verified — issues no longer appear in SonarQube."
+        elif not verified:
+            status = "FAILED"
+            msg = f"❌ None of the {len(still_open)} fix(es) were verified — issues still appear."
+        else:
+            status = "PARTIAL"
+            msg = (
+                f"⚠️ Partial verification: {len(verified)} verified, "
+                f"{len(still_open)} still open."
+            )
+
+        _log(msg)
+        if new_issues:
+            _log(f"ℹ️ {new_issues} new issue(s) detected in the latest scan.")
+
+        return {
+            "status": status,
+            "verified": verified,
+            "still_open": still_open,
+            "new_issues": new_issues,
+            "message": msg,
+        }

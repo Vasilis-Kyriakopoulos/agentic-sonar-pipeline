@@ -48,6 +48,7 @@ def configure_clean_logging():
 # Apply clean logging immediately
 configure_clean_logging()
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 load_dotenv()
 
@@ -111,6 +112,22 @@ class ScanResponse(BaseModel):
     message: str
 
 
+class VerifyRequest(BaseModel):
+    """Request body for running a post-fix verification scan."""
+    repo_url: Optional[str] = Field(None, description="Git URL to clone.")
+    repo_path: Optional[str] = Field(None, description="Path to an already-cloned repo inside the container.")
+    project_key: str = Field(..., description="SonarQube project key.")
+    issue_keys: list[str] = Field(..., description="Issue keys to verify (the ones that were fixed).")
+
+
+class VerifyResponse(BaseModel):
+    status: str = Field(..., description="SUCCESS | PARTIAL | FAILED")
+    verified: list[str] = Field(default_factory=list, description="Issue keys confirmed silenced.")
+    still_open: list[str] = Field(default_factory=list, description="Issue keys still present after scan.")
+    new_issues: int = Field(default=0, description="Count of new issues found.")
+    message: str = Field(..., description="Human-readable summary.")
+
+
 class SessionStatus(BaseModel):
     session_id: str
     status: str
@@ -118,6 +135,7 @@ class SessionStatus(BaseModel):
     total_issues: int
     processed: int
     results: list[dict]
+    verification: Optional[dict] = None
     started_at: Optional[str]
     completed_at: Optional[str]
 
@@ -128,15 +146,9 @@ class SessionStatus(BaseModel):
 
 @app.on_event("startup")
 def startup():
-    # Re-apply clean logging configuration to clear any handlers added by Uvicorn during startup
+    # Re-apply clean logging after Uvicorn adds its own handlers during startup
     configure_clean_logging()
-
-    # Diagnostic logging inspection
-    import sys
-    for name in ["", "uvicorn", "uvicorn.error", "uvicorn.access"]:
-        l = logging.getLogger(name)
-        logging.info(f"DEBUG_LOG_LOGGER '{name}': handlers={l.handlers}, propagate={l.propagate}")
-    sys.stdout.flush()
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
     db.init_db()
     logging.info("[API] Database initialized.")
@@ -224,6 +236,19 @@ def run_pipeline(request: PipelineRequest):
     else:
         raise HTTPException(status_code=400, detail="Provide either repo_url or repo_path.")
 
+    # --- Check for duplicate/in-progress runs ---
+    db_session = db.get_session()
+    try:
+        if "all" not in request.issue_keys:
+            in_progress = db.get_in_progress_issues(db_session, request.issue_keys)
+            if in_progress:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Conflict: The following issues are already being processed: {', '.join(in_progress)}"
+                )
+    finally:
+        db_session.close()
+
     # --- Create session ---
     session_id = f"session-{uuid.uuid4().hex[:8]}"
 
@@ -235,6 +260,7 @@ def run_pipeline(request: PipelineRequest):
         "total_issues": 0,
         "processed": 0,
         "results": [],
+        "verification": None,
         "started_at": datetime.utcnow().isoformat(),
         "completed_at": None,
     }
@@ -276,6 +302,7 @@ def list_runs(limit: int = 20):
                 "session_branch": r.session_branch,
                 "verdict": r.verdict,
                 "attempts": r.attempts,
+                "verified": {1: True, 0: False}.get(r.verified),
                 "started_at": r.started_at.isoformat() if r.started_at else None,
                 "completed_at": r.completed_at.isoformat() if r.completed_at else None,
             }
@@ -293,6 +320,51 @@ def get_analytics():
         return db.get_analytics(session)
     finally:
         session.close()
+
+
+@app.post("/pipeline/verify", response_model=VerifyResponse, tags=["Pipeline"])
+def verify_fixes(request: VerifyRequest):
+    """
+    Run a SonarQube re-scan and verify that specific issues have been silenced.
+
+    This is a synchronous endpoint — it blocks until the scan + analysis completes
+    (up to ~120 seconds).
+    """
+    # --- Resolve repository path ---
+    if request.repo_url:
+        repo_name = request.repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+        repo_path = os.path.join(REPOS_DIR, repo_name)
+        if not os.path.isdir(repo_path):
+            raise HTTPException(status_code=400, detail=f"Repository not found at {repo_path}. Clone it first via /scan or /pipeline/run.")
+    elif request.repo_path:
+        repo_path = request.repo_path
+        if not os.path.isdir(repo_path):
+            raise HTTPException(status_code=400, detail=f"Directory not found: {repo_path}")
+    else:
+        raise HTTPException(status_code=400, detail="Provide either repo_url or repo_path.")
+
+    # --- Run verification ---
+    db_session = db.get_session()
+    try:
+        sonar_client = SonarCubeClient(url=SONAR_URL, token=SONAR_TOKEN)
+
+        coordinator = Coordinator(
+            sonar_client=sonar_client,
+            model_name=MODEL,
+            url=MODEL_BASE_URL,
+            token=LLM_API_KEY,
+            repo_path=repo_path,
+            db_session=db_session,
+        )
+
+        result = coordinator.verify_fixes(request.project_key, request.issue_keys)
+        return VerifyResponse(**result)
+
+    except Exception as e:
+        logging.error(f"[API] Verification failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(e)}")
+    finally:
+        db_session.close()
 
 
 # ---------------------------------------------------------------------------
@@ -322,9 +394,19 @@ def _run_pipeline_background(
         else:
             selected_issues = [i for i in all_issues if i["key"] in issue_keys]
 
+        # Filter out issues that are already in progress
+        if selected_issues:
+            in_progress_keys = set(db.get_in_progress_issues(db_session, [i["key"] for i in selected_issues]))
+            if in_progress_keys:
+                logging.info(f"[API] Skipping issues already in progress: {in_progress_keys}")
+                selected_issues = [i for i in selected_issues if i["key"] not in in_progress_keys]
+
         if not selected_issues:
             sessions[session_id]["status"] = "COMPLETED"
             sessions[session_id]["completed_at"] = datetime.utcnow().isoformat()
+            sessions[session_id]["results"].append({
+                "info": "No issues left to process (all requested issues are already being processed)."
+            })
             return
 
         sessions[session_id]["total_issues"] = len(selected_issues)
@@ -351,6 +433,22 @@ def _run_pipeline_background(
             results.append({"issue": issue, "result": result})
             sessions[session_id]["processed"] = i + 1
             sessions[session_id]["results"] = results
+
+        # --- Auto-verify: re-scan to confirm fixes ---
+        fixed_keys = [
+            entry["issue"]["key"]
+            for entry in results
+            if entry.get("result", {}).get("status") == "SUCCESS"
+        ]
+
+        if fixed_keys:
+            sessions[session_id]["status"] = "VERIFYING"
+            logging.info(f"[API] Running verification scan for {len(fixed_keys)} fixed issue(s)...")
+
+            verification = coordinator.verify_fixes(project_key, fixed_keys)
+            sessions[session_id]["verification"] = verification
+        else:
+            sessions[session_id]["verification"] = None
 
         sessions[session_id]["status"] = "COMPLETED"
         sessions[session_id]["completed_at"] = datetime.utcnow().isoformat()

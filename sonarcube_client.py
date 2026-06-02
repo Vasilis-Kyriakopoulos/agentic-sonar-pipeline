@@ -109,4 +109,53 @@ class SonarCubeClient():
             logging.error(f"SonarQube scan failed: {e.stderr}\nOutput: {e.stdout}")
             raise Exception(f"SonarQube scan failed: {e.stderr}")
 
-    
+    def _wait_for_ce_task(self, project_key: str, timeout: int = 120, poll_interval: int = 5) -> bool:
+        """
+        Poll the SonarQube Compute Engine API until the latest analysis task
+        for the given project finishes (or we time out).
+
+        Returns True if the task completed successfully, False on timeout or failure.
+        """
+        import time
+
+        ce_url = f"{self.url}/api/ce/activity"
+        params = {"component": project_key, "ps": 1, "status": "PENDING,IN_PROGRESS"}
+        elapsed = 0
+
+        logging.info(f"Waiting for SonarQube analysis to finish (timeout={timeout}s)...")
+
+        while elapsed < timeout:
+            try:
+                resp = requests.get(ce_url, params=params, auth=(self.token, ""))
+                resp.raise_for_status()
+                tasks = resp.json().get("tasks", [])
+
+                if not tasks:
+                    # No pending/in-progress tasks — analysis is done
+                    logging.info("SonarQube analysis task completed.")
+                    return True
+
+                status = tasks[0].get("status", "UNKNOWN")
+                logging.info(f"  CE task status: {status} (waited {elapsed}s)")
+            except requests.exceptions.RequestException as e:
+                logging.warning(f"  CE polling error: {e}")
+
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+        logging.warning(f"Timed out waiting for SonarQube analysis after {timeout}s.")
+        return False
+
+    def run_scan_and_wait(
+        self, repo_path: str, project_key: str,
+        timeout: int = 120, poll_interval: int = 5,
+    ) -> bool:
+        """
+        Run sonar-scanner and wait for the Compute Engine to finish processing.
+
+        Returns True if the scan + analysis completed successfully.
+        Raises on scan failure.
+        """
+        self.run_scan(repo_path, project_key)
+        return self._wait_for_ce_task(project_key, timeout=timeout, poll_interval=poll_interval)
+
