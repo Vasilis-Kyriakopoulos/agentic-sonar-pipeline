@@ -151,6 +151,7 @@ class Agent:
             if tool_func:
                 self.log(f"Executing tool: {tool_name}")
                 result = tool_func(**arguments)
+                self.log(f"Tool result: {result}")
             else:
                 self.log(f"Error: Tool '{tool_name}' not found in mapping.")
                 result = f"Error: Tool '{tool_name}' not found."

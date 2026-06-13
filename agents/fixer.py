@@ -65,6 +65,9 @@ class FixerAgent(Agent):
             if not os.path.exists(full_path):
                 return f"Failure: File {full_path} does not exist."
 
+            if full_path.endswith(".ipynb"):
+                return self.apply_ipynb_fix(full_path, old_code, new_code, explanation)
+
             with open(full_path, "r", encoding="utf-8") as f:
                 content = f.read()
             
@@ -81,6 +84,45 @@ class FixerAgent(Agent):
 
         except Exception as e:
             return f"Error: {str(e)}"
+
+    def apply_ipynb_fix(self, full_path: str, old_code: str, new_code: str, explanation: str) -> str:
+        """Parses a Jupyter Notebook, locates old_code inside code cells, replaces it, and saves."""
+        import json
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                notebook = json.load(f)
+            
+            fixed = False
+            file_name = os.path.basename(full_path)
+            for cell in notebook.get("cells", []):
+                if cell.get("cell_type") == "code":
+                    source_list = cell.get("source", [])
+                    if isinstance(source_list, str):
+                        cell_code = source_list
+                    else:
+                        cell_code = "".join(source_list)
+                    
+                    matched_old = self._find_match(old_code, cell_code, file_name)
+                    if matched_old is not None:
+                        new_cell_code = cell_code.replace(matched_old, new_code, 1)
+                        if isinstance(source_list, str):
+                            cell["source"] = new_cell_code
+                        else:
+                            cell["source"] = new_cell_code.splitlines(keepends=True)
+                        fixed = True
+                        break
+            
+            if not fixed:
+                return f"Failure: 'old_code' block not found in any code cells of {file_name}."
+
+            with open(full_path, "w", encoding="utf-8", newline='') as f:
+                json.dump(notebook, f, indent=1)
+            
+            self.fix_applied = True
+            return f"Success: Fix applied to notebook {file_name}. {explanation}"
+
+        except Exception as e:
+            return f"Error modifying notebook: {str(e)}"
 
     def _find_match(self, old_code: str, content: str, file_name: str) -> str | None:
         """Attempts to find old_code in content with progressive fallbacks. Returns the matched string or None."""
