@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Docker Topology Diagram</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            fontFamily: 'Inter, sans-serif'
+        });
+    </script>
+    <style>
+        body {
+            background-color: #0e1117;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        .mermaid {
+            background: #1e2130;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mermaid">
+    graph LR
+        subgraph Docker Compose Network
+            direction LR
+            
+            subgraph App["app (Container)"]
+                direction TB
+                F[FastAPI :8000]
+                S[Streamlit :8501]
+                Scanner[sonar-scanner]
+            end
+            
+            subgraph SQ["sonarqube (Container)"]
+                SQCE[SonarQube CE :9000]
+            end
+            
+            App -->|"API & Scan Calls"| SQ
+            
+            subgraph AppV["app Volumes"]
+                V1[(app_repos)]
+                V2[(app_db)]
+            end
+            
+            subgraph SQV["sonarqube Volumes"]
+                V3[(sonarqube_data)]
+                V4[(sonarqube_logs)]
+                V5[(sonarqube_extensions)]
+            end
+            
+            App -.- AppV
+            SQ -.- SQV
+        end
+        
+        classDef container fill:#2d3748,stroke:#4a5568,stroke-width:2px,color:#fff;
+        classDef volume fill:#4a5568,stroke:#718096,stroke-width:1px,color:#cbd5e0;
+        classDef inner fill:#1a202c,stroke:#2b6cb0,stroke-width:1px,color:#e2e8f0;
+        classDef network fill:#00000000,stroke:#3182ce,stroke-width:2px,stroke-dasharray: 5 5;
+        
+        class App,SQ container;
+        class V1,V2,V3,V4,V5 volume;
+        class F,S,Scanner,SQCE inner;
+    </div>
+</body>
+</html>

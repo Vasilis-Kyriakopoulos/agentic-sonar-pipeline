@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Agentic Loop Diagram</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            fontFamily: 'Inter, sans-serif'
+        });
+    </script>
+    <style>
+        body {
+            background-color: #0e1117;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+        .mermaid {
+            background: #1e2130;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="mermaid">
+    flowchart TD
+        Start([Start fix_code_file]) --> BuildPrompt[1. Κατασκευή user prompt<br/>issue + source code]
+        BuildPrompt --> AddRefl{2. Υπάρχει<br/>feedback?}
+        AddRefl -- Ναι --> AppendRefl[Προσθήκη reflection messages] --> LoopStart
+        AddRefl -- Όχι --> LoopStart[3. For loop<br/>έως MAX_TOOL_CALLS=5]
+        
+        LoopStart --> LLMCall[3.1 _tracked_call<br/>LLM response]
+        LLMCall --> HasTools{3.2 Έχει<br/>tool_calls?}
+        
+        HasTools -- Όχι --> BreakLoop[Break Loop]
+        HasTools -- Ναι --> ExecTool[3.3 handle_tool_call<br/>εκτέλεση εργαλείου]
+        
+        ExecTool --> IsFixed{3.4 fix_applied?}
+        IsFixed -- Ναι --> Success([Return SUCCESS])
+        IsFixed -- Όχι --> CheckAttempts{Όριο 5<br/>προσπαθειών?}
+        
+        CheckAttempts -- Όχι --> LoopStart
+        CheckAttempts -- Ναι --> BreakLoop
+        
+        BreakLoop --> Fail([4. Return FAILURE])
+        
+        classDef process fill:#2d3748,stroke:#4a5568,stroke-width:2px,color:#fff;
+        classDef decision fill:#744210,stroke:#b7791f,stroke-width:2px,color:#fff;
+        classDef success fill:#22543d,stroke:#38a169,stroke-width:2px,color:#fff;
+        classDef fail fill:#742a2a,stroke:#e53e3e,stroke-width:2px,color:#fff;
+        classDef startend fill:#2b6cb0,stroke:#3182ce,stroke-width:2px,color:#fff;
+
+        class Start startend;
+        class BuildPrompt,AppendRefl,LoopStart,LLMCall,ExecTool,BreakLoop process;
+        class AddRefl,HasTools,IsFixed,CheckAttempts decision;
+        class Success success;
+        class Fail fail;
+    </div>
+</body>
+</html>

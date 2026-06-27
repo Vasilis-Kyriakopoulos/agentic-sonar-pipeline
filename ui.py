@@ -132,12 +132,15 @@ def api_get(path: str, **kwargs):
         return None
 
 
-def api_post(path: str, json_body: dict):
+def api_post(path: str, json_body: dict, timeout: int = 300):
     """POST request to the FastAPI backend."""
     try:
-        resp = requests.post(f"{API_BASE}{path}", json=json_body, timeout=10)
+        resp = requests.post(f"{API_BASE}{path}", json=json_body, timeout=timeout)
         resp.raise_for_status()
         return resp.json()
+    except requests.exceptions.Timeout:
+        st.error("⚠️ The operation timed out. The backend is taking too long.")
+        return None
     except requests.exceptions.ConnectionError:
         st.error("⚠️ Cannot connect to the API. Is the FastAPI server running?")
         return None

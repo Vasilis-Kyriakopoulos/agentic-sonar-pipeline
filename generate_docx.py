@@ -62,6 +62,19 @@ def add_code_block(doc, code):
         run = p.add_run(line if line else " ")
         run.font.name = "Courier New"
         run.font.size = Pt(9)
+
+def add_image(doc, image_path, width=Cm(15)):
+    """Add an image centered."""
+    import os
+    if os.path.exists(image_path):
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.paragraph_format.space_before = Pt(12)
+        p.paragraph_format.space_after = Pt(12)
+        r = p.add_run()
+        r.add_picture(image_path, width=width)
+    else:
+        print(f"Warning: Image not found: {image_path}")
         run.font.color.rgb = RGBColor(0x1a, 0x1a, 0x2e)
 
 
@@ -348,7 +361,105 @@ add_table(doc,
     ],
     caption="Πίνακας 1 — Ρόλοι Πρακτόρων (Agents)")
 
-add_heading(doc, "1.4 Δομή Εργασίας", 2)
+# ─── 1.4 Related Work ─────────────────────────────────────────────────────
+add_heading(doc, "1.4 Σχετικές Εργασίες (Related Work)", 2)
+
+body(doc,
+     "Η αυτοματοποιημένη επιδιόρθωση κώδικα (Automated Program Repair — APR) αποτελεί ενεργό "
+     "ερευνητικό πεδίο εδώ και πάνω από μία δεκαετία. Τα κλασικά συστήματα APR, όπως τα "
+     "GenProg (Le Goues et al., 2012) και PAR (Kim et al., 2013), βασίζονταν σε γενετικό "
+     "προγραμματισμό ή σε ανθρώπινα-ορισμένα πρότυπα διορθώσεων, με περιορισμένη γενικευσιμότητα.")
+
+body(doc, "Η εμφάνιση των LLMs μετέβαλε ριζικά το τοπίο. Βασικά συστήματα περιλαμβάνουν:")
+
+add_heading(doc, "1.4.1 SWE-Agent (Yang et al., 2024)", 3)
+body(doc,
+     "Το SWE-Agent μετατρέπει ένα LLM σε πράκτορα ικανό να αλληλεπιδρά με ένα repository "
+     "μέσω ειδικής γραμμής εντολών (Agent-Computer Interface). Αξιολογήθηκε στο benchmark "
+     "SWE-bench (2.294 πραγματικά issues) και επιτυγχάνει 12.47% resolution rate. Η βασική "
+     "διαφορά με το δικό μας σύστημα: το SWE-Agent χειρίζεται γενικά GitHub issues, ενώ εμείς "
+     "εστιάζουμε σε δομημένα ζητήματα στατικής ανάλυσης με σαφείς κανόνες και τοποθεσίες.")
+
+add_heading(doc, "1.4.2 AutoCodeRover (Zhang et al., 2024)", 3)
+body(doc,
+     "Το AutoCodeRover εφαρμόζει δύο-φασική προσέγγιση: context retrieval μέσω AST analysis "
+     "και patch generation. Στο SWE-bench-lite πετυχαίνει 22.7% resolution rate με μέσο κόστος "
+     "$0.43/issue. Το δικό μας σύστημα υιοθετεί παρόμοια φιλοσοφία: ο SonarQube παρέχει "
+     "ακριβή τοποθεσία, εξαλείφοντας την ανάγκη AST exploration.")
+
+add_heading(doc, "1.4.3 Aider (Gauthier, 2024)", 3)
+body(doc,
+     "Το Aider είναι CLI-based εργαλείο pair programming, production-ready και ευρέως "
+     "χρησιμοποιούμενο. Το δικό μας σύστημα διαφοροποιείται εφαρμόζοντας πολλαπλούς "
+     "εξειδικευμένους πράκτορες αντί ενός μοναδικού LLM, και ενσωματώνει αυτοματοποιημένη "
+     "αξιολόγηση (Evaluator) με μηχανισμό αυτο-βελτίωσης (reflection).")
+
+add_heading(doc, "1.4.4 Σύγκριση Συστημάτων", 3)
+
+add_table(doc,
+    headers=["Σύστημα", "Πράκτορες", "Πηγή Issues", "Αυτο-βελτίωση", "Αξιολόγηση"],
+    rows=[
+        ["SWE-Agent", "1 (μονολιθικός)", "GitHub Issues", "Όχι", "Εξωτερική"],
+        ["AutoCodeRover", "1 (2 φάσεις)", "GitHub Issues", "Μερική", "Εξωτερική"],
+        ["Aider", "1 (interactive)", "Χρήστης", "Μέσω dialogue", "Χρήστης"],
+        ["Agentic SonarQube", "5 (multi-agent)", "SonarQube", "Ναι (Reflection)", "Ενσωματωμένη"],
+    ],
+    caption="Πίνακας 9 — Σύγκριση με Σχετικά Συστήματα")
+
+# ─── 1.5 Agentic Design Patterns ──────────────────────────────────────────
+add_heading(doc, "1.5 Σχεδιαστικά Πρότυπα Πρακτόρων (Agentic Design Patterns)", 2)
+
+body(doc,
+     "Η αρχιτεκτονική του συστήματος εφαρμόζει τέσσερα θεμελιώδη σχεδιαστικά πρότυπα "
+     "πρακτόρων (Ng, 2024; Weng, 2023):")
+
+add_heading(doc, "1.5.1 Tool Use Pattern", 3)
+body(doc,
+     "Ο πράκτορας εκτελεί ενέργειες στον πραγματικό κόσμο μέσω εργαλείων (tools). "
+     "Στο σύστημά μας: ο Fixer χρησιμοποιεί apply_surgical_fix (τροποποίηση αρχείων), "
+     "ο Tester χρησιμοποιεί check_testability, execute_test, submit_test_result "
+     "(δημιουργία και εκτέλεση tests). Το Tool Use pattern μετατρέπει το LLM από "
+     "παθητικό σε ενεργό πράκτορα (Schick et al., 2023).")
+
+add_heading(doc, "1.5.2 Structured Output Pattern", 3)
+body(doc,
+     "Εξαναγκάζει αυστηρά δομημένη έξοδο μέσω Pydantic models: ο Reviewer παράγει "
+     "ReviewResult (readability, maintainability, suggestions, is_acceptable), "
+     "ο Evaluator παράγει EvalResult (correctness, safety, readability, verdict, "
+     "reasoning). Εξασφαλίζει parseable output μεταξύ agents.")
+
+add_heading(doc, "1.5.3 Reflection Pattern", 3)
+body(doc,
+     "Ο μηχανισμός Reflexion (Shinn et al., 2023) επιτρέπει αυτο-βελτίωση: "
+     "(1) ο Fixer παράγει διόρθωση, (2) ο Evaluator αξιολογεί και αποφασίζει RETRY, "
+     "(3) το reasoning τροφοδοτείται πίσω στον Fixer ως feedback, (4) ο Fixer "
+     "παράγει βελτιωμένη διόρθωση. Χωρίς fine-tuning ή re-training.")
+
+add_heading(doc, "1.5.4 Multi-Agent Orchestration Pattern", 3)
+body(doc,
+     "Αντί μονολιθικού agent, χρησιμοποιούνται πολλαπλοί εξειδικευμένοι πράκτορες "
+     "υπό κεντρικό Coordinator (Wu et al., 2023). Παρέχει separation of concerns, "
+     "composability, και independent evaluation (αποφυγή self-evaluation bias).")
+
+add_ascii_diagram(doc, """
+┌─────────────────────────────────────────────────────────────┐
+│            Αντιστοίχιση Patterns → Agents                   │
+│                                                             │
+│  Tool Use          → Fixer (apply_surgical_fix)             │
+│                    → Tester (check_testability, execute)     │
+│                                                             │
+│  Structured Output → Reviewer (ReviewResult)                │
+│                    → Evaluator (EvalResult)                  │
+│                                                             │
+│  Reflection        → Evaluator reasoning → Fixer feedback   │
+│                                                             │
+│  Multi-Agent       → Coordinator orchestrates 4 agents      │
+└─────────────────────────────────────────────────────────────┘
+""")
+figure_caption(doc, "Εικόνα 4 — Αντιστοίχιση Σχεδιαστικών Προτύπων Πρακτόρων στο Σύστημα")
+
+# ─── 1.6 Chapter Structure ────────────────────────────────────────────────
+add_heading(doc, "1.6 Δομή Εργασίας", 2)
 
 body(doc, "Η υπόλοιπη εργασία οργανώνεται ως εξής:")
 items = [
@@ -359,10 +470,62 @@ items = [
     ("Κεφάλαιο 6", " — REST API (FastAPI) και Streamlit UI"),
     ("Κεφάλαιο 7", " — Ανάπτυξη με Docker"),
     ("Κεφάλαιο 8", " — Δοκιμές (Testing)"),
-    ("Κεφάλαιο 9", " — Συμπεράσματα"),
+    ("Κεφάλαιο 9", " — Αποτελέσματα Εκτέλεσης"),
+    ("Κεφάλαιο 10", " — Συμπεράσματα"),
 ]
 for label, rest in items:
     bold_inline(doc, label, rest, indent=1)
+
+page_break(doc)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SEQUENCE DIAGRAM
+# ─────────────────────────────────────────────────────────────────────────────
+
+body(doc, "Πριν εμβαθύνουμε στα επιμέρους στοιχεία, παρουσιάζεται η συνολική ροή εκτέλεσης του pipeline ως sequence diagram:")
+
+add_ascii_diagram(doc, """
+  User          Coordinator      Fixer          Tester         Reviewer       Evaluator      SonarQube
+   │                 │              │              │              │              │              │
+   │── select ──────►│              │              │              │              │              │
+   │   issues        │── fetch ─────┼──────────────┼──────────────┼──────────────┼─────────────►│
+   │                 │◄─ source ────┼──────────────┼──────────────┼──────────────┼──────────────│
+   │                 │              │              │              │              │              │
+   │                 │── fix ──────►│              │              │              │              │
+   │                 │              │── tool call ─┤              │              │              │
+   │                 │              │   apply_     │              │              │              │
+   │                 │              │   surgical   │              │              │              │
+   │                 │              │   _fix       │              │              │              │
+   │                 │◄─ patched ───│              │              │              │              │
+   │                 │              │              │              │              │              │
+   │                 │── test ──────┼─────────────►│              │              │              │
+   │                 │              │              │── generate ──┤              │              │
+   │                 │              │              │── execute ───┤              │              │
+   │                 │◄─ result ────┼──────────────│              │              │              │
+   │                 │              │              │              │              │              │
+   │                 │── review ────┼──────────────┼─────────────►│              │              │
+   │                 │◄─ scores ────┼──────────────┼──────────────│              │              │
+   │                 │              │              │              │              │              │
+   │                 │── evaluate ──┼──────────────┼──────────────┼─────────────►│              │
+   │                 │◄─ verdict ───┼──────────────┼──────────────┼──────────────│              │
+   │                 │              │              │              │              │              │
+   │                 │  ┌─ if PASS ─┤              │              │              │              │
+   │                 │  │ commit ───►│              │              │              │              │
+   │                 │  │ resolve ──┼──────────────┼──────────────┼──────────────┼─────────────►│
+   │                 │  └───────────┤              │              │              │              │
+   │                 │              │              │              │              │              │
+   │                 │  ┌ if RETRY ─┤              │              │              │              │
+   │                 │  │ restore ──►│              │              │              │              │
+   │                 │  │ feedback ──► (loop back to fix)         │              │              │
+   │                 │  └───────────┤              │              │              │              │
+   │                 │              │              │              │              │              │
+   │                 │── verify ────┼──────────────┼──────────────┼──────────────┼─────────────►│
+   │                 │              │              │              │              │   re-scan     │
+   │                 │◄─ confirmed ─┼──────────────┼──────────────┼──────────────┼──────────────│
+   │◄─ report ──────│              │              │              │              │              │
+   │                 │              │              │              │              │              │
+""")
+figure_caption(doc, "Εικόνα 2 — Ροή Εκτέλεσης Pipeline (Sequence Diagram)")
 
 page_break(doc)
 
@@ -469,20 +632,7 @@ add_table(doc,
 
 add_heading(doc, "2.2.4 Σχεσιακό Διάγραμμα (ER Diagram)", 3)
 
-add_ascii_diagram(doc, """
-┌──────────────┐       ┌──────────────────┐       ┌──────────────────┐
-│    issues    │ 1───* │  pipeline_runs   │ 1───* │   token_usage    │
-├──────────────┤       ├──────────────────┤       ├──────────────────┤
-│ PK id        │       │ PK id            │       │ PK id            │
-│ UK key  ◄────────FK──│ FK issue_key     │       │ FK run_id  ►─────┤
-│ rule         │       │ session_branch   │       │ agent_name       │
-│ severity     │       │ verdict          │       │ model_name       │
-│ component    │       │ attempts         │       │ prompt_tokens    │
-│ file_path    │       │ verified         │       │ completion_tokens│
-│ line/message │       │ started_at       │       │ estimated_cost   │
-│ type/status  │       │ completed_at     │       │ called_at        │
-└──────────────┘       └──────────────────┘       └──────────────────┘
-""")
+add_image(doc, "docs/screenshots/er_diagram.png")
 figure_caption(doc, "Εικόνα 3 — Σχεσιακό Μοντέλο Βάσης Δεδομένων (ER Diagram)")
 
 add_heading(doc, "2.3 Μοντέλα Δεδομένων — models.py", 2)
@@ -684,21 +834,8 @@ body(doc,
      "Η μέθοδος process_issue() υλοποιεί τον κύκλο retry με μέγιστο 2 επαναλήψεις "
      "(3 συνολικά προσπάθειες). Η ροή εκτέλεσης για κάθε προσπάθεια:")
 
-add_ascii_diagram(doc, """
-  Για attempt = 1 → max_retries+1 (3 φορές):
-  ├── 1. Fetch source code από SonarQube
-  ├── 2. Fixer Agent → apply_surgical_fix (tool calling)
-  ├── 3. Αν fix failed → continue
-  ├── 4. Read fixed code from file
-  ├── 5. Tester Agent → δημιουργία & εκτέλεση tests
-  ├── 6. Reviewer Agent → αξιολόγηση ποιότητας
-  ├── 7. Evaluator Agent → τελική απόφαση
-  │
-  ├── PASS  → git commit, mark resolved, return SUCCESS
-  ├── RETRY → git restore, add reflection msg, continue
-  └── FAIL  → git restore, return FAIL
-""")
-figure_caption(doc, "Εικόνα 5 — Retry Loop και Reflection Mechanism")
+add_image(doc, "docs/screenshots/reflection_diagram.png")
+figure_caption(doc, "Εικόνα 5 — Διάγραμμα Ροής: Retry Loop, AI Reflection και SonarQube Rescan")
 
 add_heading(doc, "5.2.1 Reflection Messages", 3)
 
@@ -789,6 +926,29 @@ add_heading(doc, "6.2.4 Σελίδα Analytics", 3)
 body(doc,
      "Σελίδα αναλυτικών στατιστικών: top metrics, verification stats, pipeline stats, "
      "cost breakdown ανά agent, και πλήρης πίνακας runs ως Pandas DataFrame.")
+
+add_heading(doc, "6.2.5 Custom CSS", 3)
+body(doc,
+     "Η διεπαφή χρησιμοποιεί custom CSS για premium εμφάνιση: "
+     "Gradient headers, Glassmorphism metric cards, Status badges "
+     "(PASS=πράσινο, FAIL=κόκκινο, RETRY=πορτοκαλί), Inter font (Google Fonts), "
+     "και Dark mode sidebar.")
+
+add_heading(doc, "6.2.6 Screenshots Διεπαφής", 3)
+
+body(doc, "Παρακάτω παρουσιάζονται στιγμιότυπα από το Streamlit Dashboard σε πραγματική λειτουργία:")
+
+add_image(doc, "docs/screenshots/dashboard.png")
+figure_caption(doc, "Εικόνα 8 — Streamlit Dashboard: Κεντρική σελίδα με metric cards, cost summary και πρόσφατα pipeline runs")
+
+add_image(doc, "docs/screenshots/run_pipeline.png")
+figure_caption(doc, "Εικόνα 9 — Σελίδα Run Pipeline: Επιλογή issues και εκκίνηση του πράκτορα")
+
+add_image(doc, "docs/screenshots/issues.png")
+figure_caption(doc, "Εικόνα 10 — Σελίδα Issues: Λίστα ζητημάτων αντλημένη από τον SonarQube")
+
+add_image(doc, "docs/screenshots/analytics.png")
+figure_caption(doc, "Εικόνα 11 — Analytics: Αναλυτικά στατιστικά, metrics ανά πράκτορα, και ιστορικό αναλύσεων")
 
 page_break(doc)
 
@@ -922,12 +1082,74 @@ add_code_block(doc, "pytest tests/ -v")
 page_break(doc)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CHAPTER 9 — CONCLUSIONS
+# CHAPTER 9 — RESULTS
 # ─────────────────────────────────────────────────────────────────────────────
 
-add_heading(doc, "9. Συμπεράσματα", 1)
+add_heading(doc, "9. Αποτελέσματα Εκτέλεσης", 1)
 
-add_heading(doc, "9.1 Επιτεύγματα", 2)
+body(doc,
+     "Για την αξιολόγηση του συστήματος, εκτελέστηκε ο πλήρης pipeline σε ένα δημόσιο "
+     "repository με γνωστές ευπάθειες (vulnerable-python-repo). Ο παρακάτω πίνακας "
+     "παρουσιάζει τα αποτελέσματα:")
+
+add_heading(doc, "9.1 Πίνακας Αποτελεσμάτων", 2)
+
+add_table(doc,
+    headers=["#", "Κανόνας", "Αρχείο", "Τύπος", "Verdict", "Score", "Προσπάθειες"],
+    rows=[
+        ["1", "python:S112", "pokedex/helper.py:20", "CODE_SMELL", "✅ PASS", "8.7", "1"],
+        ["2", "python:S1045", "pokedex/helper.py:21", "BUG", "❌ FAIL", "—", "3"],
+        ["3", "python:S6965", "pokedex/app.py:9", "CODE_SMELL", "✅ PASS", "9.0", "1"],
+    ],
+    caption="Πίνακας 10 — Αποτελέσματα Εκτέλεσης Pipeline")
+
+body(doc, "Ποσοστό Επιτυχίας: 66.7% (2/3 issues)")
+
+add_heading(doc, "9.2 Ανάλυση Αποτελεσμάτων", 2)
+
+body(doc, "Επιτυχημένες Διορθώσεις:")
+for item in [
+    "Issue #1 (S112 — Generic Exception): Ο Fixer αντικατέστησε τη γενική Exception "
+    "με εξειδικευμένη sqlite3.DatabaseError. Αξιολογήθηκε με PASS στην 1η προσπάθεια (Score: 8.7).",
+    "Issue #3 (S6965 — HTTP Methods): Ο Fixer πρόσθεσε methods=[\"GET\"] στο Flask route decorator. "
+    "Αξιολογήθηκε με PASS στην 1η προσπάθεια (Score: 9.0)."
+]:
+    p = doc.add_paragraph(style="List Bullet")
+    run = p.add_run(item)
+    run.font.name = "Times New Roman"
+    run.font.size = Pt(12)
+
+body(doc, "\nΑποτυχημένη Διόρθωση:")
+for item in [
+    "Issue #2 (S1045 — Duplicate Catch): Η αποτυχία οφείλεται στη σύγκρουση μεταξύ "
+    "δύο overlapping issues στο ίδιο αρχείο. Ο Fixer δεν κατάφερε να εφαρμόσει τη σωστή "
+    "αντικατάσταση μετά από 3 προσπάθειες (max retries)."
+]:
+    p = doc.add_paragraph(style="List Bullet")
+    run = p.add_run(item)
+    run.font.name = "Times New Roman"
+    run.font.size = Pt(12)
+
+add_heading(doc, "9.3 Παρατηρήσεις", 2)
+for item in [
+    "Τα CODE_SMELL issues επιλύθηκαν επιτυχώς, ενώ το BUG απέτυχε (λόγω overlapping).",
+    "Οι επιτυχημένες διορθώσεις εφαρμόστηκαν στην πρώτη προσπάθεια.",
+    "Ο μέσος overall score των επιτυχημένων διορθώσεων ήταν 8.85/10."
+]:
+    p = doc.add_paragraph(style="List Bullet")
+    run = p.add_run(item)
+    run.font.name = "Times New Roman"
+    run.font.size = Pt(12)
+
+page_break(doc)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CHAPTER 10 — CONCLUSIONS
+# ─────────────────────────────────────────────────────────────────────────────
+
+add_heading(doc, "10. Συμπεράσματα", 1)
+
+add_heading(doc, "10.1 Επιτεύγματα", 2)
 
 body(doc,
      "Η παρούσα εργασία επέτυχε τον σχεδιασμό και την υλοποίηση ενός ολοκληρωμένου "
@@ -953,7 +1175,7 @@ achievements = [
 for label, rest in achievements:
     bold_inline(doc, label, rest, indent=1)
 
-add_heading(doc, "9.2 Τεχνικές Προκλήσεις", 2)
+add_heading(doc, "10.2 Τεχνικές Προκλήσεις", 2)
 
 challenges = [
     ("Ακρίβεια surgical fixes",
@@ -969,7 +1191,7 @@ challenges = [
 for label, rest in challenges:
     bold_inline(doc, label, rest, indent=1)
 
-add_heading(doc, "9.3 Μελλοντικές Επεκτάσεις", 2)
+add_heading(doc, "10.3 Μελλοντικές Επεκτάσεις", 2)
 
 future = [
     "Υποστήριξη πολλαπλών γλωσσών (Java, JavaScript, C#)",
@@ -990,7 +1212,7 @@ page_break(doc)
 # REFERENCES
 # ─────────────────────────────────────────────────────────────────────────────
 
-add_heading(doc, "10. Πηγές – Βιβλιογραφία", 1)
+add_heading(doc, "11. Πηγές – Βιβλιογραφία", 1)
 
 refs = [
     "Anthropic (2024). Claude 3 Family. Ανάκτηση Ιούνιος 2026, από https://www.anthropic.com/claude",

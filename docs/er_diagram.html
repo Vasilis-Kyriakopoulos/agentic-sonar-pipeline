@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ER Diagram</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default', fontFamily: 'Inter, Arial, sans-serif' });
+    </script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: white;
+        }
+        .mermaid {
+            transform: scale(1.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="mermaid">
+    erDiagram
+        issues ||--o{ pipeline_runs : "has"
+        pipeline_runs ||--o{ token_usage : "generates"
+
+        issues {
+            int id PK "Auto-increment ID"
+            string key UK "Unique SonarQube issue key"
+            string rule "SonarQube rule"
+            string severity "BLOCKER, CRITICAL, MAJOR, etc."
+            string component "File path with project"
+            string file_path "Relative path"
+            int line "Line number"
+            string message "Issue description"
+            string type "BUG, CODE_SMELL"
+            string status "OPEN, FIXED, FAILED"
+            string project_key "Project key"
+            datetime first_seen_at "First seen"
+            datetime last_updated_at "Last updated"
+        }
+
+        pipeline_runs {
+            int id PK "Auto-increment ID"
+            string issue_key FK "Links to issues.key"
+            string session_branch "Git branch name"
+            string verdict "SUCCESS, FAIL"
+            int attempts "Number of attempts"
+            int verified "1=verified, 0=open"
+            datetime started_at "Execution start"
+            datetime completed_at "Execution completion"
+        }
+
+        token_usage {
+            int id PK "Auto-increment ID"
+            int run_id FK "Links to pipeline_runs.id"
+            string agent_name "Agent name"
+            string model_name "LLM model"
+            int prompt_tokens "Input tokens"
+            int completion_tokens "Output tokens"
+            int total_tokens "Total tokens"
+            float estimated_cost_usd "Estimated cost (USD)"
+            datetime called_at "Call timestamp"
+        }
+    </div>
+</body>
+</html>
