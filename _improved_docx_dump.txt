@@ -1,0 +1,517 @@
+0000|Normal|ΠΑΝΕΠΙΣΤΗΜΙΟ ΠΕΛΟΠΟΝΝΗΣΟΥ
+0001|Normal|ΣΧΟΛΗ ΟΙΚΟΝΟΜΙΑΣ ΚΑΙ ΤΕΧΝΟΛΟΓΙΑΣ
+0002|Normal|ΤΜΗΜΑ ΠΛΗΡΟΦΟΡΙΚΗΣ ΚΑΙ ΤΗΛΕΠΙΚΟΙΝΩΝΙΩΝ
+0003|Normal|ΠΜΣ ΣΤΗΝ ΕΠΙΣΤΗΜΗ ΥΠΟΛΟΓΙΣΤΩΝ
+0007|Normal|ΤΙΤΛΟΣ ΕΡΓΑΣΙΑΣ:
+0008|Normal|Agentic SonarQube Pipeline:
+Σύστημα Πολλαπλών Πρακτόρων για
+Αυτοματοποιημένη Επιδιόρθωση Ευπαθειών Κώδικα
+0010|Normal|ΟΝΟΜΑΤΕΠΩΝΥΜΟ: ΚΥΡΙΑΚΟΠΟΥΛΟΣ ΒΑΣΙΛΕΙΟΣ
+0011|Normal|Α.Μ.: 2022202502019
+0013|Normal|Τρίπολη | Ιούνιος 2026
+0019|Heading 1|Ευρετήριο Εικόνων
+0020|table of figures|Εικόνα 1: Αρχιτεκτονική Συστήματος Πολλαπλών Πρακτόρων	8
+0021|table of figures|Εικόνα 2: Αντιστοίχιση Σχεδιαστικών Προτύπων Πρακτόρων στο Σύστημα	11
+0022|table of figures|Εικόνα 3: Κλάση SonarCubeClient	12
+0023|table of figures|Εικόνα 4: Μέθοδος get_issues()	12
+0024|table of figures|Εικόνα 5: Παράδειγμα Δομής Δεδομένων JSON	12
+0025|table of figures|Εικόνα 6: Σχεσιακό Μοντέλο Βάσης Δεδομένων (ER Diagram)	15
+0026|table of figures|Εικόνα 7: Δομές μοντέλων δεδομένων	16
+0027|table of figures|Εικόνα 8: Retry Loop και Reflection Mechanism	21
+0028|table of figures|Εικόνα 9: Streamlit Dashboard: Κεντρική σελίδα με metric cards, cost summary και recent pipeline runs	24
+0029|table of figures|Εικόνα 10: Σελίδα Issues: Λίστα ζητημάτων αντλημένη από τον SonarQube	25
+0030|table of figures|Εικόνα 11: Σελίδα Run Pipeline: Επιλογή issues και εκκίνηση του Agent	25
+0031|table of figures|Εικόνα 12: Analytics: Token usage, costs, success rates και cost breakdown ανά agent	25
+0032|table of figures|Εικόνα 13: Docker Compose Τοπολογία	26
+0034|Heading 1|Ευρετήριο Πινάκων
+0035|table of figures|Πίνακας 1: Ρόλοι Πρακτόρων (Agents)	9
+0036|table of figures|Πίνακας 2: Σύγκριση με Σχετικά Συστήματα	10
+0037|table of figures|Πίνακας 3: Σχήμα Βάσης Δεδομένων: Πίνακας issues	13
+0038|table of figures|Πίνακας 4: Σχήμα Βάσης Δεδομένων: Πίνακας pipeline_runs	13
+0039|table of figures|Πίνακας 5: Σχήμα Βάσης Δεδομένων: Πίνακας token_usage	14
+0040|table of figures|Πίνακας 6: Τιμολόγηση Μοντέλων LLM (ενδεικτικές τιμές)	18
+0041|table of figures|Πίνακας 7: REST API Endpoints	23
+0042|table of figures|Πίνακας 8: Αποτελέσματα Εκτέλεσης Pipeline	29
+0043|table of figures|Πίνακας 9: Δομή Αρχείων Έργου	33
+0044|table of figures|Πίνακας 10: Τεχνολογίες και Εξαρτήσεις	34
+0048|Heading 1|Περίληψη
+0049|Normal|Η παρούσα εργασία παρουσιάζει τον σχεδιασμό και την υλοποίηση ενός συστήματος πολλαπλών πρακτόρων (multi-agent system) για την αυτοματοποιημένη ανίχνευση και επιδιόρθωση ευπαθειών κώδικα. Το σύστημα, με τίτλο Agentic SonarQube Pipeline, ενσωματώνει τεχνολογίες στατικής ανάλυσης κώδικα (SonarQube) με μεγάλα γλωσσικά μοντέλα (LLMs) σε μια πλήρως ενορχηστρωμένη αλυσίδα εργασιών (pipeline).
+0050|Normal|Η αρχιτεκτονική βασίζεται σε πέντε εξειδικευμένους πράκτορες: τον Fixer Agent που εφαρμόζει χειρουργικές διορθώσεις μέσω tool calling, τον Tester Agent που παράγει και εκτελεί unit tests σε πραγματικό χρόνο, τον Reviewer Agent που αξιολογεί την ποιότητα του κώδικα μέσω structured outputs, τον Evaluator Agent που βαθμολογεί κάθε διόρθωση και αποφασίζει αν γίνει δεκτή (PASS/RETRY/FAIL), και τον Coordinator που ενορχηστρώνει τη συνολική ροή με μηχανισμό αυτο-βελτίωσης (AI reflection loop).
+0051|Normal|Η μεθοδολογία ακολούθησε σταδιακή ανάπτυξη σε τέσσερις φάσεις: (1) θεμελίωση υποδομής και διασύνδεση API, (2) ενσωμάτωση LLM και τηλεμετρία, (3) πράκτορες διασφάλισης ποιότητας, και (4) ενορχήστρωση και αυτο-βελτίωση. Το σύστημα παρέχει τρεις τρόπους χρήσης: γραμμή εντολών (CLI), REST API (FastAPI), και γραφική διεπαφή (Streamlit dashboard). Η ανάπτυξη γίνεται μέσω Docker Compose, ενσωματώνοντας την εφαρμογή μαζί με τον SonarQube server σε ένα ενιαίο containerized περιβάλλον.
+0052|Normal|Λέξεις – κλειδιά: multi-agent systems, LLM, SonarQube, automated code repair, tool calling, structured outputs, AI reflection, static code analysis, Python, FastAPI, Docker
+0062|Heading 1|Abstract
+0063|Normal|This thesis presents the design and implementation of a multi-agent system for the automated detection and repair of code vulnerabilities. The system, titled Agentic SonarQube Pipeline, integrates static code analysis technologies (SonarQube) with large language models (LLMs) into a fully orchestrated workflow (pipeline).
+0064|Normal|The architecture is based on five specialized agents: the Fixer Agent, which applies surgical fixes via tool calling; the Tester Agent, which generates and executes unit tests in real time; the Reviewer Agent, which evaluates code quality through structured outputs; the Evaluator Agent, which scores each fix and decides whether it is accepted (PASS/RETRY/FAIL); and the Coordinator, which orchestrates the overall flow with a self-improvement mechanism (AI reflection loop).
+0065|Normal|The methodology followed an incremental development approach in four phases: (1) infrastructure foundation and API integration, (2) LLM integration and telemetry, (3) quality assurance agents, and (4) orchestration and self-improvement. The system provides three modes of use: command-line interface (CLI), REST API (FastAPI), and a graphical user interface (Streamlit dashboard). Deployment is handled via Docker Compose, integrating the application with the SonarQube server in a unified containerized environment.
+0066|Normal|Keywords: multi-agent systems, LLM, SonarQube, automated code repair, tool calling, structured outputs, AI reflection, static code analysis, Python, FastAPI, Docker
+0075|Heading 1|Εισαγωγή
+0076|Heading 2|Γενική Τοποθέτηση
+0077|Normal|Η ποιότητα λογισμικού αποτελεί κρίσιμη παράμετρο σε κάθε κύκλο ανάπτυξης. Εργαλεία στατικής ανάλυσης κώδικα, όπως το SonarQube  [1], εντοπίζουν αυτοματοποιημένα bugs, ευπάθειες ασφαλείας (vulnerabilities) και κακοσχεδιασμένο κώδικα (code smells) ακόμα και πριν αυτός εκτελεστεί. Ωστόσο, η διαδικασία επιδιόρθωσης αυτών των ζητημάτων παραμένει σε μεγάλο βαθμό χειροκίνητη, απαιτώντας χρόνο και εξειδίκευση από τους προγραμματιστές.
+0078|Normal|Παράλληλα, η ραγδαία εξέλιξη των Μεγάλων Γλωσσικών Μοντέλων έχει δημιουργήσει νέες δυνατότητες στον αυτοματισμό εργασιών κωδικοποίησης. Μοντέλα όπως τα GPT-4o  [2], Claude  [3] και LLaMA  [4] μπορούν να κατανοήσουν κώδικα, να προτείνουν διορθώσεις και ακόμη να παράγουν δοκιμές μονάδας (unit tests).
+0079|Heading 2|Κίνητρα
+0080|Normal|Η κεντρική ιδέα αυτής της εργασίας είναι η γεφύρωση του χάσματος μεταξύ ανίχνευσης και επιδιόρθωσης: ένα σύστημα που όχι μόνο εντοπίζει ευπάθειες κώδικα, αλλά τις διορθώνει αυτόνομα, ελέγχει τις διορθώσεις με αυτοματοποιημένα τεστ, αξιολογεί την ποιότητά τους, και αν κρίνει ότι δεν πληρούν τα πρότυπα, ξανά-προσπαθεί. Σε ένα τυπικό project με δεκάδες ή εκατοντάδες ανοιχτά ζητήματα, η χειροκίνητη αποκατάσταση απαιτεί σημαντικό χρόνο και εξειδίκευση, ενώ συχνά η προτεραιοποίηση γίνεται με υποκειμενικά κριτήρια. Η αυτοματοποίηση μέσω AI agents υπόσχεται ταχύτερη, συνεπέστερη και οικονομικότερη αντιμετώπιση αυτών των ζητημάτων.
+0081|Heading 2|Στόχοι της Εργασίας
+0082|Normal|Η εργασία ασχολείται με το εξής πρακτικό πρόβλημα: ενώ εργαλεία όπως ο SonarQube εντοπίζουν αυτόματα ζητήματα στον κώδικα, η διόρθωσή τους γίνεται χειροκίνητα από τον προγραμματιστή. Στόχος της εργασίας είναι να κλείσει αυτό το κενό, δημιουργώντας ένα σύστημα που όχι μόνο εντοπίζει αλλά και διορθώνει αυτόματα τα ζητήματα, αξιολογεί τις διορθώσεις, και επαληθεύει ότι εφαρμόστηκαν σωστά. Πιο συγκεκριμένα, οι επιμέρους στόχοι της εργασίας είναι:
+0083|Normal|Πρώτος στόχος: Να διερευνηθεί κατά πόσο μια δομημένη ροή εργασίας με πολλαπλούς πράκτορες (agents) μπορεί να μετατρέψει αυτόματα τα ζητήματα που εντοπίζει ο SonarQube σε στοχευμένες διορθώσεις κώδικα.
+0084|Normal|Δεύτερος στόχος: Να αξιολογηθεί ο ρόλος των πρακτόρων ελέγχου ποιότητας (Tester, Reviewer, Evaluator) στη μείωση μη ασφαλών ή χαμηλής ποιότητας διορθώσεων, πριν αυτές καταλήξουν στον τελικό κώδικα.
+0085|Normal|Τρίτος στόχος: Να εξεταστεί πώς η τηλεμετρία, η βάση δεδομένων και η εκ νέου σάρωση μέσω SonarQube υποστηρίζουν την αναπαραγωγιμότητα, τη λογοδοσία και την τεχνική τεκμηρίωση του συστήματος.
+0086|Normal|Η κύρια συνεισφορά είναι ένας αναπαραγώγιμος αγωγός που συνδέει SonarQube, OpenAI-based agents, SQLite telemetry, REST API και Streamlit UI, με σαφή διαχωρισμό ρόλων και δυνατότητα αξιολόγησης των αποτελεσμάτων.
+0087|Heading 1|Μεθοδολογία και Αρχιτεκτονική
+0088|Normal|Η ανάπτυξη ακολούθησε αρχιτεκτονική πολλαπλών πρακτόρων (multi-agent architecture), στην οποία κάθε πράκτορας (agent) εξειδικεύεται σε μία λειτουργία. Παρακάτω παρουσιάζεται η αρχιτεκτονική του συστήματος:
+0112|Caption|Πίνακας 1: Ρόλοι Πρακτόρων (Agents)
+0113|Heading 2|Συνολική Ροή Εργασίας
+0114|Normal|Η ροή εργασίας που προκύπτει από τον κώδικα είναι σειριακή ως προς την απόφαση ανά issue, αλλά πολυ-σταδιακή ως προς την ποιότητα της αλλαγής. Ο χρήστης μπορεί να ξεκινήσει την εκτέλεση από CLI, REST API ή Streamlit UI, ενώ ο Coordinator διατηρεί τον έλεγχο των βημάτων μέχρι την τελική αποδοχή ή απόρριψη.
+0115|List Bullet|Είσοδος και προετοιμασία: ο χρήστης δηλώνει repository και SonarQube project key. Αν δοθεί remote URL, το repository κλωνοποιείται τοπικά και δημιουργείται branch εκτέλεσης με όνομα fix/sonar-session-<timestamp>.
+0116|List Bullet|Συλλογή issues: ο SonarCubeClient εκτελεί ή διαβάζει σάρωση SonarQube, υποστηρίζει pagination και αποθηκεύει τα open issues στη SQLite βάση ώστε η εκτέλεση να είναι ιχνηλάσιμη.
+0117|List Bullet|Κύκλος επιδιόρθωσης: ο Fixer Agent παράγει στοχευμένη αλλαγή αρχείου, ο Tester Agent εκτελεί ελέγχους με χρονικό όριο, ο Reviewer Agent αξιολογεί τις τροποποιημένες γραμμές και ο Evaluator Agent αποφασίζει PASS, RETRY ή FAIL με δομημένο αποτέλεσμα.
+0118|List Bullet|Ανάδραση και ανάκτηση: σε RETRY ο Coordinator επαναφέρει το αρχείο και τροφοδοτεί τον Fixer με feedback από testing, review και evaluation. Σε FAIL διατηρείται η κατάσταση αποτυχίας χωρίς να αφήνεται μισή αλλαγή στο working tree.
+0119|List Bullet|Αποδοχή και επαλήθευση: σε PASS γίνεται commit, ενημέρωση του SonarQube issue και, όπου ζητείται, νέα σάρωση με αναμονή του Compute Engine ώστε να συγκριθούν τα issue keys πριν και μετά την επιδιόρθωση.
+0120|Heading 2|Σχετικές Εργασίες (Related Work)
+0121|Normal|Η αυτοματοποιημένη επιδιόρθωση κώδικα (Automated Program Repair — APR) αποτελεί ενεργό ερευνητικό πεδίο εδώ και πάνω από μία δεκαετία. Τα κλασικά συστήματα APR, όπως τα GenProg  [5] και PAR  [6], βασίζονταν σε γενετικό προγραμματισμό ή σε ανθρώπινα-ορισμένα πρότυπα διορθώσεων, με περιορισμένη γενικευσιμότητα.
+0122|Normal|Η εμφάνιση των LLMs μετέβαλε ριζικά το τοπίο. Βασικά συστήματα περιλαμβάνουν:
+0123|Heading 3|SWE-Agent  [7]
+0124|Normal|Το SWE-Agent μετατρέπει ένα LLM σε πράκτορα ικανό να αλληλεπιδρά με ένα repository μέσω ειδικής γραμμής εντολών (Agent-Computer Interface). Αξιολογήθηκε στο benchmark SWE-bench (2.294 πραγματικά issues) και επιτυγχάνει 12.47% resolution rate. Η βασική διαφορά με το δικό μας σύστημα: το SWE-Agent χειρίζεται γενικά GitHub issues, ενώ εμείς εστιάζουμε σε δομημένα ζητήματα στατικής ανάλυσης με σαφείς κανόνες και τοποθεσίες.
+0125|Heading 3|AutoCodeRover  [8]
+0126|Normal|Το AutoCodeRover εφαρμόζει δύο-φασική προσέγγιση: context retrieval μέσω AST analysis και patch generation. Στο SWE-bench-lite πετυχαίνει 22.7% resolution rate με μέσο κόστος $0.43/issue. Το δικό μας σύστημα υιοθετεί παρόμοια φιλοσοφία: ο SonarQube παρέχει ακριβή τοποθεσία, εξαλείφοντας την ανάγκη AST exploration.
+0127|Heading 3|Aider  [9]
+0128|Normal|Το Aider είναι CLI-based εργαλείο pair programming, production-ready και ευρέως χρησιμοποιούμενο. Το δικό μας σύστημα διαφοροποιείται εφαρμόζοντας πολλαπλούς εξειδικευμένους πράκτορες αντί ενός μοναδικού LLM, και ενσωματώνει αυτοματοποιημένη αξιολόγηση (Evaluator) με μηχανισμό αυτο-βελτίωσης (reflection).
+0129|Heading 3|Σύγκριση Συστημάτων
+0130|Caption|Πίνακας 2: Σύγκριση με Σχετικά Συστήματα
+0131|Heading 2|Σχεδιαστικά Πρότυπα Πρακτόρων (Agentic Design Patterns)
+0132|Normal|Η αρχιτεκτονική του συστήματος εφαρμόζει τέσσερα θεμελιώδη σχεδιαστικά πρότυπα πρακτόρων  [10],  [11]:
+0133|Heading 3|Tool Use Pattern
+0134|Normal|Ο πράκτορας εκτελεί ενέργειες στον πραγματικό κόσμο μέσω εργαλείων (tools). Στο σύστημά μας: ο Fixer χρησιμοποιεί apply_surgical_fix (τροποποίηση αρχείων), ο Tester χρησιμοποιεί check_testability, execute_test, submit_test_result (δημιουργία και εκτέλεση tests). Το Tool Use pattern μετατρέπει το LLM από παθητικό σε ενεργό πράκτορα  [12].
+0135|Heading 3|Structured Output Pattern
+0136|Normal|Εξαναγκάζει αυστηρά δομημένη έξοδο μέσω Pydantic models: ο Reviewer παράγει ReviewResult (readability, maintainability, suggestions, is_acceptable), ο Evaluator παράγει EvalResult (correctness, safety, readability, verdict, reasoning). Εξασφαλίζει parseable output μεταξύ agents.
+0137|Heading 3|Reflection Pattern
+0138|Normal|Ο μηχανισμός Reflexion  [13] επιτρέπει αυτο-βελτίωση: (1) ο Fixer παράγει διόρθωση, (2) ο Evaluator αξιολογεί και αποφασίζει RETRY, (3) το reasoning τροφοδοτείται πίσω στον Fixer ως feedback, (4) ο Fixer παράγει βελτιωμένη διόρθωση. Χωρίς fine-tuning ή re-training.
+0139|Heading 3|Multi-Agent Orchestration Pattern
+0140|Normal|Αντί ενός agent, χρησιμοποιούνται πολλαπλοί εξειδικευμένοι πράκτορες υπό κεντρικό Coordinator  [14]. Παρέχει separation of concerns, composability, και independent evaluation (αποφυγή self-evaluation bias).
+0143|Heading 1|Θεμελίωση Υποδομής, Διασύνδεση API και Διαχείριση Δεδομένων
+0144|Normal|Ο πρωταρχικός στόχος αυτής της ενότητας είναι η δημιουργία της βασικής αρχιτεκτονικής υποδομής, η οποία εξασφαλίζει την επικοινωνία με τον SonarQube server, τη μόνιμη αποθήκευση δεδομένων και τη διαχείριση του κύκλου ζωής των ζητημάτων (OPEN → FIXED | FAILED).
+0145|Heading 2|SonarQube Client — sonarcube_client.py
+0146|Normal|Η κλάση SonarCubeClient αποτελεί τον πυρήνα επικοινωνίας με τον SonarQube server. Αρχικοποιείται με ένα URL και ένα authentication token.
+0147|Heading 3|Ανάκτηση Ζητημάτων (Issues Fetching)
+0148|Normal|Η μέθοδος get_issues() υλοποιεί paginated fetching, ανακτώντας ζητήματα ανά σελίδα (500 ανά σελίδα) μέσω του endpoint /api/issues/search. Η σελιδοποίηση (pagination) είναι απαραίτητη καθώς τα projects μπορεί να περιέχουν χιλιάδες ζητήματα. Ανακτώνται μόνο ζητήματα με κατάσταση OPEN, CONFIRMED ή REOPENED.
+0149|Normal|Το SonarQube επιστρέφει για κάθε issue ένα αντικείμενο JSON το οποίο περιέχει την ακριβή τοποθεσία και τον κανόνα παραβίασης. Αυτή είναι η πληροφορία (μαζί με τον πηγαίο κώδικα) που τελικά τροφοδοτείται στον Fixer Agent:
+0151|Heading 3|Ανάκτηση Πηγαίου Κώδικα
+0152|Normal|Η μέθοδος fetch_source_code() χρησιμοποιεί το endpoint /api/sources/raw για να ανακτήσει τον πηγαίο κώδικα ενός αρχείου απευθείας από τον SonarQube server. Αυτό επιτρέπει τον Fixer Agent να δει ακριβώς τον κώδικα που αναλύθηκε.
+0153|Heading 3|Σήμανση Επιδιόρθωσης και Επαλήθευση
+0154|Normal|Η μέθοδος mark_issue_fixed() εκτελεί δύο ενέργειες: (1) Προσθήκη σχολίου στο issue με τη βαθμολογία του Evaluator και το reasoning, (2) Μετάβαση κατάστασης (transition) σε 'resolved' μέσω του /api/issues/do_transition.
+0155|Normal|Για την επαλήθευση, υλοποιήθηκαν:
+0156|List Paragraph|run_scan() , εκτελεί sonar-scanner CLI ως subprocess
+0157|List Paragraph|_wait_for_ce_task(), κάνει polling στο Compute Engine API (`/api/ce/activity`) μέχρι η ανάλυση να ολοκληρωθεί (ή να γίνει timeout)
+0158|List Paragraph|run_scan_and_wait() ,συνδυάζει τις παραπάνω σε μια ενιαία, σύγχρονη λειτουργία.
+0159|Normal|Ο μηχανισμός polling αποτελεί θεμελιώδη τεχνική στην αρχιτεκτονική του συστήματος. Όταν εκτελείται μια σάρωση (scan) στον SonarQube, ο server δεν επιστρέφει αμέσως τα αποτελέσματα. Αντ' αυτού, ο SonarQube αναθέτει την ανάλυση στο Compute Engine (CE), ένα background service που επεξεργάζεται τον κώδικα ασύγχρονα. Αυτό σημαίνει ότι η εφαρμογή δεν μπορεί απλά να περιμένει μια απάντηση — πρέπει να ρωτά επαναλαμβανόμενα τον server αν η ανάλυση έχει ολοκληρωθεί. Αυτή η τεχνική ονομάζεται polling: η μέθοδος _wait_for_ce_task() στέλνει αιτήματα HTTP στο endpoint /api/ce/activity σε τακτά χρονικά διαστήματα (π.χ. κάθε 5 δευτερόλεπτα), ελέγχοντας αν η κατάσταση της εργασίας (task status) έχει αλλάξει σε SUCCESS ή FAILED. Αν η ανάλυση δεν ολοκληρωθεί εντός ενός ρυθμιζόμενου χρονικού ορίου (configurable timeout), η μέθοδος εγκαταλείπει και επιστρέφει σφάλμα, αποφεύγοντας έτσι την αιώνια αναμονή. Ο μηχανισμός αυτός χρησιμοποιείται τόσο κατά την αρχική σάρωση του repository όσο και κατά την επαλήθευση (verification) μετά τις διορθώσεις, διασφαλίζοντας ότι το σύστημα λειτουργεί αξιόπιστα ακόμα και όταν ο SonarQube server αργεί να ανταποκριθεί.
+0160|Heading 2|Σχεσιακή Βάση Δεδομένων — database.py
+0161|Normal|Η αποθήκευση δεδομένων γίνεται μέσω SQLite (αρχείο pipeline.db) με τη βιβλιοθήκη SQLAlchemy ORM. Η βάση δεδομένων περιέχει τρεις πίνακες
+0164|Caption|Πίνακας 3: Σχήμα Βάσης Δεδομένων: Πίνακας issues
+0167|Caption|Πίνακας 4: Σχήμα Βάσης Δεδομένων: Πίνακας pipeline_runs
+0170|Caption|Πίνακας 5: Σχήμα Βάσης Δεδομένων: Πίνακας token_usage
+0172|Heading 2|Μοντέλα Δεδομένων — models.py
+0173|Normal|Τα μοντέλα δεδομένων χωρίζονται σε δύο κατηγορίες. Τα Dataclasses (Issue, FixResult, TestResult, PipelineResult) χρησιμοποιούνται για εσωτερική αναπαράσταση. Τα Pydantic BaseModels (ReviewResult, EvalResult) χρησιμοποιούνται για structured outputs από το LLM.
+0174|Normal|Ιδιαίτερο ενδιαφέρον παρουσιάζει ο υπολογισμός overall_score στο EvalResult ως computed field Pydantic: μέσος όρος των τριών επιμέρους βαθμολογιών (correctness, safety, readability).
+0175|Heading 1|Ενσωμάτωση LLM, Πράκτορας Επιδιόρθωσης (Fixer Agent) και Τηλεμετρία
+0176|Normal|Ο στόχος αυτής της ενότητας είναι η αξιοποίηση LLMs για τη δημιουργία ενός αυτόνομου μηχανισμού επιδιόρθωσης κώδικα, με ταυτόχρονη παρακολούθηση του κόστους χρήσης.
+0177|Heading 2|Βασική Κλάση Agent — agents/agent.py
+0178|Normal|Η κλάση Agent αποτελεί αφηρημένη βασική κλάση για όλους τους πράκτορες. Κάθε agent αρχικοποιείται με model_name, url και token, δημιουργώντας εσωτερικά έναν OpenAI client. Η χρήση custom base_url επιτρέπει σύνδεση με οποιοδήποτε OpenAI-compatible API (OpenAI, Ollama, OpenRouter, LM Studio κ.λπ.).
+0179|Heading 3|Tracked Calls — Αυτόματη Τηλεμετρία
+0180|Normal|Κάθε κλήση LLM γίνεται μέσω δύο wrappers: _tracked_call() για κανονικές chat completions και _tracked_parse() για structured output (Pydantic) completions. Και οι δύο αυτόματα εξάγουν τα prompt_tokens και completion_tokens από το response και τα καταγράφουν στη βάση δεδομένων μέσω log_token_usage().
+0181|Heading 3|Generic Tool Handling
+0182|Normal|Η μέθοδος handle_tool_call() παρέχει γενικό μηχανισμό εκτέλεσης εργαλείων (tools). Κάθε υποκλάση ορίζει ένα tool_mapping dictionary που αντιστοιχίζει ονόματα εργαλείων σε μεθόδους Python. Ο agent εκτελεί αυτόματα κάθε tool call που επιστρέφει το LLM.
+0183|Heading 2|Fixer Agent — agents/fixer.py
+0184|Normal|Ο Fixer Agent εφαρμόζει χειρουργικές (surgical) διορθώσεις στον κώδικα. Λαμβάνει αυστηρές οδηγίες: FOCUS (μόνο το συγκεκριμένο ζήτημα), PRECISION (προσοχή στον αριθμό γραμμής), και SURGICAL EDITS (υποχρεωτική χρήση του εργαλείου apply_surgical_fix).
+0186|Heading 3|Tool: apply_surgical_fix
+0187|Normal|Η κεντρική λειτουργία του Fixer ορίζεται ως OpenAI function tool με παραμέτρους: file_path (σχετικό path αρχείου), old_code (ακριβές block κώδικα προς αντικατάσταση), new_code (νέος κώδικας), και explanation (αιτιολόγηση διόρθωσης).
+0188|Normal|Η υλοποίηση apply_surgical_fix() εφαρμόζει αντικατάσταση κειμένου (string replacement) στο αρχείο. Περιλαμβάνει τρεις μηχανισμούς fallback: (1) Ακριβής αντιστοίχιση, (2) Newline-stripped αντιστοίχιση, (3) Fully-stripped αντιστοίχιση (μόνο αν unique).
+0189|Heading 3|Υποστήριξη Jupyter Notebooks
+0190|Normal|Ο Fixer μπορεί να τροποποιεί και αρχεία .ipynb μέσω της μεθόδου apply_ipynb_fix(). Αναλύει τη δομή JSON του notebook, αναζητά τον κώδικα στα code cells, εφαρμόζει την αντικατάσταση και αποθηκεύει ξανά τη δομή JSON.
+0191|Heading 3|Διαχείριση Git
+0192|Normal|Ο Fixer παρέχει δύο βοηθητικές μεθόδους Git:
+0193|List Paragraph|setup_fix_branch() — Δημιουργία νέου branch για τις διορθώσεις
+0194|List Paragraph|`commit_fix() — Commit των αλλαγών με περιγραφικό μήνυμα
+0195|Heading 3|Agentic Loop
+0196|Normal|Η μέθοδος fix_code_file() υλοποιεί τον agentic loop: κατασκευάζει το user prompt με τα στοιχεία του issue και τον πηγαίο κώδικα, αν υπάρχει feedback (reflection messages) το ενσωματώνει, και επαναλαμβάνει κλήσεις LLM (μέγ. 5) μέχρι να εφαρμοστεί η διόρθωση.
+0198|Heading 2|Τηλεμετρία Tokens και Κόστος
+0199|Normal|Το σύστημα διατηρεί εσωτερικό πίνακα τιμών για τον υπολογισμό κόστους. Η αντιστοίχιση γίνεται μέσω substring matching στο όνομα μοντέλου, επιτρέποντας ευελιξία στη ρύθμιση.
+0200|Caption|Πίνακας 6: Τιμολόγηση Μοντέλων LLM (ενδεικτικές τιμές)
+0202|Heading 1|Αυτοματοποιημένη Επικύρωση και Διασφάλιση Ποιότητας (QA Agents)
+0203|Normal|Ο στόχος αυτής της ενότητας είναι η ανάπτυξη ανεξάρτητου συστήματος QA που επαληθεύει τις AI-παραγόμενες διορθώσεις πριν αυτές γίνουν δεκτές.
+0204|Heading 2|Tester Agent — agents/tester.py
+0205|Normal|Ο Tester Agent αναλαμβάνει τη δυναμική παραγωγή και εκτέλεση unit tests σε πραγματικό χρόνο. Λειτουργεί σε τρία βήματα μέσω αντίστοιχων εργαλείων (tools).
+0206|Heading 3|Τρία Εργαλεία (Tools)
+0207|Normal|Βήμα 1 — check_testability: Ελέγχει αν το ζήτημα μπορεί να επαληθευτεί με unit test. Ζητήματα καθαρά αισθητικής φύσης (π.χ. TODO comments, naming conventions) χαρακτηρίζονται ως not testable.
+0208|Normal|Βήμα 2 — execute_test: Αν είναι testable, γράφει pytest κώδικα σε προσωρινό αρχείο, τον εκτελεί με subprocess.run() με timeout 60 δευτερολέπτων, και διαγράφει το αρχείο αυτόματα (finally block).
+0209|Normal|Βήμα 3 — submit_test_result: Υποβάλλει δομημένο αποτέλεσμα με test_passed (boolean) και summary.
+0210|Heading 3|Οδηγίες για Ποιοτικά Tests
+0211|Normal|Το system prompt του Tester περιλαμβάνει εξειδικευμένες οδηγίες: σωστή χρήση import paths βάσει file path, υποχρεωτική χρήση unittest.mock για εξωτερικές εξαρτήσεις, και γνώση Python name mangling (_ClassName__private) για private attributes.
+0212|Heading 2|Reviewer Agent — agents/reviewer.py
+0213|Normal|Ο Reviewer Agent αξιολογεί την ποιότητα του κώδικα μετά τη διόρθωση. Χρησιμοποιεί τη λειτουργία Pydantic structured output του OpenAI API (client.beta.chat.completions.parse()), εξασφαλίζοντας πάντα valid ReviewResult.
+0214|Normal|Κριτήρια αξιολόγησης:
+0215|Normal|readability_score (1-10): Αναγνωσιμότητα του αλλαγμένου κώδικα.
+0216|Normal|maintainability_score (1-10): Συντηρησιμότητα, PEP-8 compliance.
+0217|Normal|suggestions: Λίστα προτάσεων βελτίωσης (κενή αν ο κώδικας είναι άριστος).
+0218|Normal|is_acceptable: Boolean — αν η διόρθωση πληροί επαγγελματικά πρότυπα.
+0219|Normal|Κρίσιμος κανόνας: ο Reviewer αξιολογεί ΜΟΝΟ τις αλλαγές που έγιναν, όχι προϋπάρχοντα ζητήματα στο αρχείο.
+0220|Heading 2|Evaluator Agent — agents/evaluator.py
+0221|Normal|Ο Evaluator Agent αποτελεί τον τελικό κριτή — αποφασίζει αν μια διόρθωση γίνεται δεκτή. Συνδυάζει τέσσερα inputs: αρχικό κώδικα, διορθωμένο κώδικα, αποτελέσματα tests, και feedback Reviewer.
+0222|Normal|Τρεις διαστάσεις βαθμολόγησης:
+0223|Normal|correctness_score (1-10): Επιλύει πραγματικά το SonarQube issue;
+0224|Normal|safety_score (1-10): Εισάγει νέες ευπάθειες ή παρενέργειες;
+0225|Normal|readability_score (1-10): Είναι καθαρός και PEP-8 compliant;
+0226|Normal|Τελική απόφαση βάσει μέσου όρου (Verdict):
+0227|Normal|PASS (μέσος ≥ 7): Η διόρθωση γίνεται δεκτή → commit + resolve στο SonarQube.
+0228|Normal|RETRY (μέσος 4–6): Η διόρθωση χρειάζεται βελτίωση → νέα προσπάθεια με feedback.
+0229|Normal|FAIL (μέσος < 4): Η διόρθωση είναι εσφαλμένη → πλήρης εγκατάλειψη.
+0231|Heading 1|Ενορχήστρωση, Αυτο-βελτίωση (AI Reflection) και Επαλήθευση
+0232|Heading 2|Coordinator — agents/coordinator.py
+0233|Normal|Ο Coordinator δεν κληρονομεί από την κλάση Agent — δεν κάνει κλήσεις LLM ο ίδιος. Αντ' αυτού, δημιουργεί εσωτερικά τους τέσσερις agents (Fixer, Tester, Reviewer, Evaluator) και ελέγχει τη συνολική ροή.
+0234|Heading 2|Retry Loop και Reflection
+0235|Normal|Η μέθοδος process_issue() υλοποιεί τον κύκλο retry με μέγιστο 2 επαναλήψεις (3 συνολικά προσπάθειες). Η ροή εκτέλεσης για κάθε προσπάθεια:
+0236|Heading 3|Reflection Messages
+0237|Normal|Το κρίσιμο στοιχείο αυτο-βελτίωσης: όταν ο Evaluator αποφασίζει RETRY, το reasoning του περνάει στον Fixer Agent ως feedback στην επόμενη προσπάθεια. Ο Fixer λαμβάνει αυτά τα μηνύματα στο prompt, επιτρέποντας στο LLM να μάθει από τα λάθη του χωρίς επαναεκπαίδευση — μηχανισμός γνωστός ως AI Reflection.
+0239|Heading 3|Ενιαίο Σημείο Εγγραφής στη Βάση
+0240|Normal|Η εγγραφή στη βάση δεδομένων γίνεται σε ένα μοναδικό σημείο μετά τη λήξη του loop, αποφεύγοντας inconsistent states: αν SUCCESS → FIXED, αν FAIL → FAILED.
+0241|Heading 2|Επαλήθευση μετά τη Διόρθωση (Verification)
+0242|Normal|Η μέθοδος verify_fixes() εκτελεί re-scan στο SonarQube μετά τις διορθώσεις για να επιβεβαιωθεί ότι τα issues όντως εξαφανίστηκαν. Η διαδικασία: (1) Εκτέλεση scan + αναμονή CE task, (2) Ανάκτηση issues μετά το scan, (3) Σύγκριση με τα fixed issue keys, (4) Ενημέρωση DB με verified/unverified, (5) Αποτέλεσμα: SUCCESS (όλα gone), PARTIAL (κάποια gone), FAILED (κανένα).
+0244|Heading 1|REST API και Διαδικτυακή Διεπαφή
+0245|Heading 2|FastAPI Backend — api.py
+0246|Normal|Η εφαρμογή εκθέτει RESTful API endpoints μέσω FastAPI. Το pipeline εκτελείται ασύγχρονα σε background thread μέσω ThreadPoolExecutor(max_workers=2), επιτρέποντας πολλαπλές ταυτόχρονες εκτελέσεις.
+0247|Caption|Πίνακας 7: REST API Endpoints
+0248|Heading 3|Αναλυτική περιγραφή Endpoints
+0249|Normal|Ακολουθεί λεπτομερής περιγραφή του κάθε endpoint που εκθέτει το API:
+0250|Heading 4|Ανάκτηση Ζητημάτων
+0251|Code Block|Endpoint: GET /issues/{project_key}
+0252|Normal|Περιγραφή: Ανακτά όλα τα ανοιχτά ζητήματα (OPEN, CONFIRMED) από τον SonarQube server για το συγκεκριμένο project. Ταυτόχρονα τα αποθηκεύει (ή ενημερώνει) στην τοπική βάση δεδομένων pipeline.db.
+0253|Code Block|Response: {"project_key": "...", "total": 10, "issues": [...]}
+0254|Heading 4|Εκτέλεση SonarQube Scan
+0255|Code Block|Endpoint: POST /scan
+0256|Normal|Περιγραφή: Κάνει git clone το repository (αν δίνεται repo_url) ή χρησιμοποιεί υπάρχον τοπικό μονοπάτι (repo_path) και εκκινεί το sonar-scanner CLI.
+0257|Code Block|Request Body (JSON):
+0258|Code Block|json
+0259|Code Block|{
+0260|Code Block|"repo_url": "https://github.com/user/repo.git",
+0261|Code Block|"repo_path": null,
+0262|Code Block|"project_key": "my-project"
+0263|Code Block|}
+0264|Heading 4|Εκκίνηση Pipeline (Ασύγχρονα)
+0265|Code Block|Endpoint: POST /pipeline/run
+0266|Normal|Περιγραφή: Δημιουργεί ένα νέο session_id, δεσμεύει τα επιλεγμένα ζητήματα για να αποφύγει διπλές εκτελέσεις και ξεκινά τη διόρθωση στο background. Επιστρέφει άμεσα το session id.
+0267|Code Block|Request Body (JSON):
+0268|Code Block|json
+0269|Code Block|{
+0270|Code Block|"repo_url": "https://github.com/user/repo.git",
+0271|Code Block|"project_key": "my-project",
+0272|Code Block|"issue_keys": ["issue_id_1", "issue_id_2"]
+0273|Code Block|}
+0274|Heading 4|Παρακολούθηση Προόδου (Polling)
+0275|Code Block|Endpoint: GET /pipeline/status/{session_id}
+0276|Normal|Περιγραφή: Επιστρέφει την τρέχουσα κατάσταση (IN_PROGRESS, VERIFYING, COMPLETED, FAILED) του pipeline, πόσα issues έχουν επεξεργαστεί και τα αναλυτικά αποτελέσματα (LLM responses, errors) μέχρι εκείνη τη στιγμή.
+0277|Heading 4|Χειροκίνητη Επαλήθευση (Verification)
+0278|Code Block|Endpoint: POST /pipeline/verify
+0279|Normal|Περιγραφή: Εκτελεί re-scan (σύγχρονα, μπλοκάρει μέχρι να τελειώσει) και συγκρίνει αν τα συγκεκριμένα issue_keys έχουν επιλυθεί ή αν άνοιξαν νέα issues (regression).
+0280|Code Block|Request Body (JSON):
+0281|Code Block|json
+0282|Code Block|{
+0283|Code Block|"repo_path": "/app/repos/my-repo",
+0284|Code Block|"project_key": "my-project",
+0285|Code Block|"issue_keys": ["issue_id_1"]
+0286|Code Block|}
+0287|Heading 4|Ιστορικό Εκτελέσεων
+0288|Code Block|Endpoint: GET /runs?limit=20
+0289|Normal|Περιγραφή: Επιστρέφει από τη βάση δεδομένων το ιστορικό των πρόσφατων pipeline runs (verdict, attempts, branch, timestamps).
+0290|Heading 4|Στατιστικά και Τηλεμετρία
+0291|Code Block|Endpoint: GET /analytics
+0292|Normal|Περιγραφή: Επιστρέφει συγκεντρωτικά στατιστικά: συνολικό κόστος, token usage (input/output/cache) και success rates των LLM calls.
+0294|Heading 2|Streamlit Dashboard — ui.py
+0295|Normal|Η γραφική διεπαφή υλοποιείται με Streamlit με custom CSS (Inter font, gradient headers, dark mode sidebar, glassmorphism metric cards, status badges) και παρέχει 4 σελίδες:
+0296|Heading 3|Σελίδα Dashboard
+0297|Normal|Κεντρική σελίδα με metric cards (Total Issues, Fixed, Failed, Success Rate), verification metrics, cost summary, cost by agent με progress bars, και λίστα πρόσφατων pipeline runs με color-coded badges.
+0298|Heading 3|Σελίδα Run Pipeline
+0299|Normal|Διαδραστική σελίδα 4 βημάτων: (1) Configure — εισαγωγή repo URL/path + project key, (2) Preview Issues — fetch issues με multiselect επιλογή, (3) Launch — εκκίνηση pipeline, (4) Live Progress — real-time progress bar με auto-refresh κάθε 5 δευτερόλεπτα.
+0300|Heading 3|Σελίδα Issues
+0301|Normal|Browser για SonarQube issues με color-coded severity (BLOCKER=κόκκινο, CRITICAL=πορτοκαλί, MAJOR=κίτρινο, MINOR=μπλε) και expandable details (component, message, tags).
+0302|Heading 3|Σελίδα Analytics
+0303|Normal|Σελίδα αναλυτικών στατιστικών: top metrics, verification stats, pipeline stats, cost breakdown ανά agent, και πλήρης πίνακας runs.
+0304|Heading 3|Screenshots Διεπαφής
+0305|Normal|Παρακάτω παρουσιάζονται στιγμιότυπα από το Streamlit Dashboard σε πραγματική λειτουργία:
+0313|Heading 1|Ανάπτυξη με Docker
+0314|Heading 2|Docker Compose Τοπολογία
+0315|Normal|Το σύστημα αναπτύσσεται με δύο Docker services που επικοινωνούν μέσω εσωτερικού Docker network:
+0317|Heading 2|Dockerfile
+0318|Normal|Βασικά χαρακτηριστικά:
+0319|List Bullet|Base image: python:3.12-slim
+0320|List Bullet|Εγκατάσταση: git, default-jre-headless (για sonar-scanner), curl, unzip
+0321|List Bullet|Download και εγκατάσταση sonar-scanner-cli v6.2.1 από binaries.sonarsource.com
+0322|List Bullet|Git identity configuration για αυτοματοποιημένα commits (bot@agentic-pipeline.local)
+0323|List Bullet|Lean dependencies (requirements.docker.txt) — χωρίς torch/transformers
+0324|List Bullet|Expose ports 8000 (FastAPI) και 8501 (Streamlit)
+0325|List Bullet|Εκκίνηση μέσω start.sh: FastAPI background + Streamlit foreground
+0326|Heading 2|Εκκίνηση
+0327|Normal|Η πλήρης στοίβα εκκινεί με μία εντολή:
+0328|Normal|docker-compose up --build
+0329|Normal|Εκκινεί:
+0330|List Bullet|Streamlit UI → http://localhost:8501
+0331|List Bullet|FastAPI API  → http://localhost:8000
+0332|List Bullet|SonarQube   → http://localhost:9000
+0334|Heading 1|Δοκιμές (Testing)
+0335|Normal|Οι δοκιμές βρίσκονται στο αρχείο tests/test_verification.py και καλύπτουν τέσσερις κατηγορίες με συνολικά 19 test cases.
+0336|Heading 2|SonarCubeClient Tests
+0337|List Bullet|test_wait_for_ce_task_completes_immediately — CE χωρίς pending tasks
+0338|List Bullet|test_wait_for_ce_task_polls_then_completes — CE ολοκληρώνεται μετά polling
+0339|List Bullet|test_wait_for_ce_task_timeout — CE δεν ολοκληρώνεται εντός timeout
+0340|List Bullet|test_run_scan_and_wait_success — Scan + wait επιτυχία
+0341|Heading 2|Database Tests (in-memory SQLite)
+0342|List Bullet|test_mark_run_verified_true/false — Σωστή ενημέρωση verified flag
+0343|List Bullet|test_mark_run_verified_nonexistent — Graceful handling μη υπάρχοντος run
+0344|List Bullet|test_get_latest_successful_runs — Ανάκτηση τελευταίου successful run
+0345|List Bullet|test_analytics_includes_verification_stats — Verification stats στα analytics
+0346|Heading 2|Coordinator Tests (mocked agents)
+0347|List Bullet|test_verify_no_issues — Κενή λίστα → SUCCESS χωρίς scan
+0348|List Bullet|test_verify_all_fixed — Όλα εξαφανίστηκαν → SUCCESS
+0349|List Bullet|test_verify_partial — Μερικά εξαφανίστηκαν → PARTIAL
+0350|List Bullet|test_verify_none_fixed — Κανένα δεν εξαφανίστηκε → FAILED
+0351|List Bullet|test_verify_scan_failure — Scan αποτυχία → FAILED
+0352|List Bullet|test_verify_detects_new_issues — Ανίχνευση νέων issues
+0353|Heading 2|FastAPI Endpoint Tests
+0354|List Bullet|test_verify_missing_both_repo_fields — HTTP 400 χωρίς repo
+0355|List Bullet|test_verify_nonexistent_repo_path — HTTP 400 για ανύπαρκτο path
+0356|List Bullet|test_verify_success — HTTP 200 με σωστά αποτελέσματα
+0357|Normal|Εκτέλεση των tests:
+0358|Code Block|pytest tests/ -v
+0360|Heading 2|Αποτελέσματα Εκτέλεσης Δοκιμών
+0361|Normal|Η σουίτα ελέγχων εκτελέστηκε στο τρέχον workspace για να διασταυρωθεί η περιγραφή με την υλοποίηση. Η εντολή που χρησιμοποιήθηκε ήταν:
+0362|Code Block|uv run pytest tests/test_verification.py -q
+0363|Normal|Το αποτέλεσμα ήταν 19 passed. Οι προειδοποιήσεις που εμφανίστηκαν αφορούν κυρίως deprecations σε datetime.utcnow, SQLAlchemy Query.get και FastAPI on_event, άρα δεν ακυρώνουν την τρέχουσα λειτουργικότητα αλλά αποτελούν σαφή σημεία μελλοντικής συντήρησης.
+0364|Heading 1|Αποτελέσματα Εκτέλεσης
+0365|Normal|Για την αξιολόγηση του συστήματος, εκτελέστηκε ο πλήρης pipeline σε ένα δημόσιο repository με γνωστές ευπάθειες (vulnerable-python-repo). Η σάρωση SonarQube εντόπισε 6 ζητήματα (2 BUG, 4 CODE_SMELL) σε δύο αρχεία Python. Το pipeline εκτελέστηκε με το μοντέλο gpt-5-nano μέσω OpenAI API. Ο παρακάτω πίνακας παρουσιάζει τα αναλυτικά αποτελέσματα:
+0366|Normal|Ως δείγμα αξιολόγησης χρησιμοποιήθηκε το δημόσιο repository «vulnerable-python-repo», μια μικρή Flask εφαρμογή (pokedex) με σκόπιμα ενσωματωμένες ευπάθειες. Αποτελείται από 2 κύρια αρχεία Python (pokedex/app.py και pokedex/helper.py), συνολικού μεγέθους περίπου 150 γραμμών κώδικα. Ο SonarQube εντόπισε 6 ζητήματα: 2 τύπου BUG (python:S3984 — useless raise, python:S1045 — duplicate catch) και 4 τύπου CODE_SMELL (python:S112 — generic exception, python:S2772 — unneeded pass, python:S6965 — HTTP methods, python:S1135 — TODO comment), με severity κυρίως MAJOR.
+0367|Heading 2|Πίνακας Αποτελεσμάτων
+0368|Caption|Πίνακας 8: Αποτελέσματα Εκτέλεσης Pipeline
+0369|Normal|Ποσοστό Επιτυχίας: 83.3% (5/6 issues)
+0371|Heading 2|Ανάλυση Αποτελεσμάτων
+0372|Normal|Επιτυχημένες Διορθώσεις (5/6):
+0373|List Bullet|Issue #1 (S3984 — Useless raise): Ο Fixer διόρθωσε τη δήλωση raise χωρίς exception στο pokedex/helper.py:36. Αξιολογήθηκε με PASS στην 1η προσπάθεια.
+0374|List Bullet|Issue #2 (S2772 — Unneeded pass): Ο Fixer αφαίρεσε την περιττή εντολή pass στο pokedex/helper.py:38. Αξιολογήθηκε με PASS στην 1η προσπάθεια.
+0375|List Bullet|Issue #3 (S112 — Generic Exception): Ο Fixer αντικατέστησε τη γενική Exception με εξειδικευμένη sqlite3.DatabaseError στο pokedex/helper.py:20. Αξιολογήθηκε με PASS στην 1η προσπάθεια (Score: 8.7).
+0376|List Bullet|Issue #4 (S6965 — HTTP Methods): Ο Fixer πρόσθεσε methods=["GET"] στο Flask route decorator στο pokedex/app.py:9. Αξιολογήθηκε με PASS στην 1η προσπάθεια (Score: 9.0).
+0377|List Bullet|Issue #5 (S1135 — TODO Comment): Ο Fixer ολοκλήρωσε και αφαίρεσε το TODO comment στο pokedex/app.py:22, υλοποιώντας τη λειτουργικότητα που ζητούσε. Αξιολογήθηκε με PASS στην 1η προσπάθεια.
+0379|Normal|Αποτυχημένη Διόρθωση (1/6):
+0380|List Bullet|Issue #6 (S1045 — Duplicate Catch): Η επιδιόρθωση δεν ολοκληρώθηκε επιτυχώς, επειδή ο Fixer Agent δεν παρήγαγε αποδεκτή χειρουργική αλλαγή μέσα στο όριο των 3 επαναλήψεων. Ο κανόνας αυτός απαιτούσε δομική αναδιοργάνωση πολλαπλών except clauses, κάτι ιδιαίτερα δύσκολο για surgical string replacement.
+0381|Heading 2|Ανάλυση Τηλεμετρίας Tokens και Κόστους
+0382|Normal|Η τηλεμετρία του συστήματος κατέγραψε αναλυτικά στοιχεία για κάθε κλήση LLM κατά τη διάρκεια της εκτέλεσης. Συνολικά πραγματοποιήθηκαν 68 κλήσεις στο μοντέλο gpt-5-nano, καταναλώνοντας 215.604 tokens με συνολικό κόστος $0,0299. Ο παρακάτω πίνακας παρουσιάζει την κατανομή ανά πράκτορα:
+0383|Caption|Πίνακας 9: Κατανομή Tokens και Κόστους ανά Πράκτορα
+0384|Normal|Tester Agent: 32 κλήσεις, 62.865 prompt tokens + 51.322 completion tokens = 114.187 tokens συνολικά (52,9% του συνόλου), κόστος $0,0204. Ο Tester καταναλώνει τα περισσότερα tokens επειδή εκτελεί πολλαπλά βήματα (check_testability → execute_test → submit_test_result) και συχνά χρειάζεται επαναλαμβανόμενες κλήσεις για τη δημιουργία σωστών tests.
+0385|Normal|Fixer Agent: 24 κλήσεις, 24.093 prompt tokens + 47.173 completion tokens = 71.266 tokens συνολικά (33,1% του συνόλου), κόστος $0,0048. Ο υψηλός αριθμός κλήσεων οφείλεται στο agentic loop (μέγ. 5 κλήσεις ανά issue) και στα αποτυχημένα retry attempts του S1045.
+0386|Normal|Evaluator Agent: 6 κλήσεις, 6.802 prompt + 9.529 completion = 16.331 tokens (7,6%), κόστος $0,0029. Reviewer Agent: 6 κλήσεις, 5.313 prompt + 8.507 completion = 13.820 tokens (6,4%), κόστος $0,0017. Οι QA agents είναι αποδοτικοί σε tokens επειδή χρησιμοποιούν structured outputs (Pydantic), εξαλείφοντας περιττό κείμενο στην έξοδο.
+0387|Normal|Αξίζει να σημειωθεί ότι τα completion tokens (116.531) υπερβαίνουν τα prompt tokens (99.073), δηλαδή οι πράκτορες παράγουν περισσότερο κείμενο απ' ό,τι λαμβάνουν ως είσοδο. Αυτό εξηγείται από τη φύση του Fixer (παράγει κώδικα) και του Tester (παράγει ολόκληρα unit tests), σε αντίθεση με τον Reviewer και τον Evaluator που παράγουν μόνο δομημένες αξιολογήσεις.
+0388|Normal|Αξιοσημείωτο είναι ότι το μέσο κόστος ανά επιτυχημένη διόρθωση είναι μόλις $0,006 (= $0,0299 / 5 issues), γεγονός που καθιστά τη χρήση του pipeline οικονομικά βιώσιμη ακόμα και για μεγάλα projects με δεκάδες ή εκατοντάδες ζητήματα.
+0389|Normal|Για να τεθεί το κόστος σε πραγματικό πλαίσιο: ο μέσος χρόνος χειροκίνητης αποκατάστασης ενός SonarQube issue εκτιμάται σε 15-30 λεπτά ανά ζήτημα. Με μέσο κόστος developer €30-50/ώρα, κάθε χειροκίνητη διόρθωση κοστίζει €7,50-25. Αντίθετα, το pipeline επιτυγχάνει μέσο κόστος $0,006 ανά επιτυχημένη διόρθωση — δηλαδή περίπου 1.000-4.000 φορές φθηνότερα. Αν και η σύγκριση είναι απλοϊκή (δεν λαμβάνει υπόψη χρόνο ανάπτυξης του pipeline, edge cases ή ζητήματα που απαιτούν ανθρώπινη κρίση), αναδεικνύει τις δυνατότητες κλιμάκωσης για μεγάλα projects.
+0390|Heading 2|Ρόλος Πρακτόρων Ελέγχου Ποιότητας (QA Agents)
+0391|Normal|Ο δεύτερος στόχος της εργασίας αφορούσε τη συμβολή των πρακτόρων QA στη διασφάλιση ποιότητας των διορθώσεων. Η ανάλυση της τηλεμετρίας αποκαλύπτει τα εξής ευρήματα:
+0392|Normal|Tester Agent: Σε 5 από τα 6 issues, ο Tester εκτέλεσε επιτυχώς unit tests που επαλήθευσαν τη σωστή λειτουργία των διορθώσεων. Σε κάθε issue εκτελέστηκαν κατά μέσο όρο 4-5 κλήσεις LLM (check_testability, πολλαπλά execute_test, submit_test_result), δείχνοντας ότι η δημιουργία αξιόπιστων tests απαιτεί επαναληπτική βελτίωση.
+0393|Normal|Reviewer Agent: Ο Reviewer αξιολόγησε κάθε επιτυχημένη διόρθωση (6 κλήσεις για 6 runs) χρησιμοποιώντας Pydantic structured output (ReviewResult). Κανένα fix δεν απορρίφθηκε από τον Reviewer στο τρέχον δείγμα, υποδηλώνοντας ότι ο Fixer παράγει κώδικα υψηλής ποιότητας ήδη από την πρώτη προσπάθεια.
+0394|Normal|Evaluator Agent: Ο τελικός κριτής πραγματοποίησε 6 κλήσεις, αξιολογώντας correctness, safety και readability. Στις 5 επιτυχημένες περιπτώσεις, η απόφαση ήταν PASS χωρίς RETRY — γεγονός που σημαίνει ότι ο μηχανισμός reflection δεν χρειάστηκε να ενεργοποιηθεί. Η μοναδική περίπτωση αποτυχίας (S1045) δεν κατάφερε να παράξει αποδεκτή αλλαγή ακόμη και μετά από 3 προσπάθειες, αναδεικνύοντας τα όρια του surgical fix approach σε δομικά πολύπλοκα ζητήματα.
+0395|Normal|Συνολικά, οι πράκτορες QA λειτούργησαν ως ανεξάρτητο δίκτυο ασφαλείας: ακόμη και αν ο Fixer παρήγαγε σωστή διόρθωση, αυτή δεν γίνεται δεκτή χωρίς να περάσει από testing, review και evaluation. Αυτή η αρχιτεκτονική εξαλείφει τον κίνδυνο self-evaluation bias που θα υπήρχε αν ο ίδιος agent αξιολογούσε τη δουλειά του.
+0396|Heading 2|Παρατηρήσεις
+0397|List Bullet|Τα CODE_SMELL issues (4/4) επιλύθηκαν πλήρως. Από τα 2 BUG issues, 1 διορθώθηκε επιτυχώς (S3984) ενώ 1 απέτυχε (S1045 — λόγω overlapping except clauses).
+0398|List Bullet|Όλες οι επιτυχημένες διορθώσεις (5/5) εφαρμόστηκαν στην πρώτη προσπάθεια, χωρίς να χρειαστεί ενεργοποίηση του μηχανισμού retry/reflection.
+0399|Heading 2|Απειλές Εγκυρότητας και Περιορισμοί
+0400|Normal|Η αξιολόγηση δείχνει λειτουργικότητα του pipeline, αλλά πρέπει να ερμηνευθεί με προσοχή λόγω του περιορισμένου εύρους του πειράματος.
+0401|List Bullet|Η εξωτερική εγκυρότητα είναι περιορισμένη, επειδή το δείγμα αξιολόγησης βασίζεται σε ένα μικρό vulnerable repository και σε έξι SonarQube issues.
+0402|List Bullet|Η μη ντετερμινιστική φύση των LLMs σημαίνει ότι αλλαγές σε μοντέλο, temperature, prompts ή provider μπορούν να επηρεάσουν την αναπαραγωγιμότητα των επιδιορθώσεων.
+0403|List Bullet|Η επαλήθευση εξαρτάται από την ολοκλήρωση του SonarQube Compute Engine και από τη σύγκριση issue keys. Αλλαγές στη ρύθμιση του scanner ή στους κανόνες μπορούν να αλλάξουν τα παρατηρούμενα αποτελέσματα.
+0404|List Bullet|Ο Tester Agent εκτελεί ελέγχους με timeout και προσωρινά test αρχεία, όμως αυτό δεν ισοδυναμεί με πλήρες sandbox ασφάλειας για μη αξιόπιστο κώδικα.
+0405|List Bullet|Η SQLite τηλεμετρία ενισχύει την ιχνηλασιμότητα, αλλά για ισχυρότερη παραγωγική χρήση πρέπει να ευθυγραμμιστούν πλήρως το database path και τα Docker volumes.
+0406|List Bullet|Τέλος, η αυτόνομη εφαρμογή αλλαγών κώδικα από τεχνητή νοημοσύνη εγείρει ζητήματα λογοδοσίας: ποιος φέρει ευθύνη για μια AI-generated διόρθωση που ενδέχεται να εισάγει νέο σφάλμα; Στο παρόν σύστημα, ο κίνδυνος αυτός μετριάζεται σημαντικά χάρη στον πολυεπίπεδο έλεγχο (Tester + Reviewer + Evaluator), ωστόσο σε παραγωγικό περιβάλλον συνιστάται πάντα η τελική ανθρώπινη επίβλεψη (human-in-the-loop) πριν την αποδοχή των αλλαγών.
+0407|Heading 1|Συμπεράσματα
+0408|Normal|Σε σχέση με τους τρεις στόχους που τέθηκαν στην Εισαγωγή, η αξιολόγηση του συστήματος οδηγεί στα εξής συμπεράσματα: Ως προς τον πρώτο στόχο, το σύστημα μετέτρεψε αυτόματα 5 από 6 ζητήματα SonarQube σε στοχευμένες διορθώσεις κώδικα (ποσοστό επιτυχίας 83,3%), αποδεικνύοντας ότι μια δομημένη agentic ροή μπορεί να αξιοποιήσει αποτελεσματικά τα μεταδεδομένα στατικής ανάλυσης. Ως προς τον δεύτερο στόχο, η ανάλυση των πρακτόρων QA (Tester, Reviewer, Evaluator) έδειξε ότι λειτουργούν ως ανεξάρτητο δίκτυο ελέγχου ποιότητας — στο τρέχον δείγμα, όλες οι επιτυχημένες διορθώσεις πέρασαν testing, review και evaluation χωρίς να χρειαστεί ενεργοποίηση του μηχανισμού retry/reflection. Ως προς τον τρίτο στόχο, η τηλεμετρία κατέγραψε 68 κλήσεις LLM, 215.604 tokens και αναλυτικό κόστος ανά πράκτορα στη βάση δεδομένων SQLite, υποστηρίζοντας πλήρη αναπαραγωγιμότητα και λογοδοσία.
+0409|Heading 2|Επιτεύγματα
+0410|Normal|Η παρούσα εργασία επέτυχε τον σχεδιασμό και την υλοποίηση ενός ολοκληρωμένου multi-agent συστήματος για αυτοματοποιημένη επιδιόρθωση ευπαθειών κώδικα. Τα βασικά επιτεύγματα περιλαμβάνουν:
+0411|Normal|Πλήρης αυτοματοποίηση κύκλου ζωής — Από την ανίχνευση (SonarQube) μέχρι τη διόρθωση, τον έλεγχο, την αξιολόγηση, το commit, και την επαλήθευση με ελάχιστη ανθρώπινη παρέμβαση.
+0412|Normal|Αυτο-βελτίωση μέσω AI Reflection — Ο μηχανισμός retry loop με feedback επιτρέπει στον Fixer να μάθει από τα λάθη του χωρίς επαναεκπαίδευση.
+0413|Normal|Τηλεμετρία και διαχείριση κόστους — Κάθε LLM κλήση καταγράφεται με ακριβή στοιχεία tokens και κόστους USD.
+0414|Normal|Ευελιξία LLM provider — Εναλλαγή μεταξύ OpenAI, Ollama, OpenRouter κ.λπ. χωρίς αλλαγή κώδικα.
+0415|Normal|Πολλαπλοί τρόποι χρήσης — CLI, REST API, και Streamlit dashboard για διαφορετικές ανάγκες χρηστών.
+0416|Normal|Containerized deployment — Docker Compose για εύκολη ανάπτυξη χωρίς εξάρτηση από τοπικό περιβάλλον.
+0417|Heading 2|Τεχνικές Προκλήσεις
+0418|Normal|Ακρίβεια surgical fixes — Η αντιστοίχιση old_code στον πραγματικό κώδικα απαιτεί fallback μηχανισμούς λόγω whitespace/newline διαφορών στην έξοδο του LLM.
+0419|Normal|Sandbox εκτέλεσης tests — Η εκτέλεση AI-παραγόμενου κώδικα απαιτεί timeout protection (60s) και ελεγχόμενο Docker περιβάλλον.
+0420|Normal|SonarQube Compute Engine latency — Η ανάλυση μετά το scan δεν είναι σύγχρονη, απαιτώντας polling mechanism με configurable timeout.
+0421|Heading 2|Μελλοντικές Επεκτάσεις
+0422|List Bullet|Υποστήριξη πολλαπλών γλωσσών (Java, JavaScript, C#)
+0423|List Bullet|Ενσωμάτωση με CI/CD pipelines (GitHub Actions, GitLab CI)
+0424|List Bullet|Ranking/prioritization ζητημάτων βάσει σοβαρότητας
+0425|List Bullet|Fine-tuning μοντέλων σε domain-specific code patterns
+0426|List Bullet|Benchmarking σε SWE-bench lite για ποσοτική σύγκριση με state-of-the-art συστήματα (SWE-Agent, AutoCodeRover)
+0427|List Bullet|A/B testing μεταξύ μοντέλων (gpt-4o vs Claude vs LLaMA) στα ίδια issues για αξιολόγηση κόστους/ποιότητας
+0428|List Bullet|Χρήση cache/memoization για ίδιους κανόνες που εμφανίζονται σε πολλαπλά projects
+0430|Heading 1|Πηγές – Βιβλιογραφία
+0434|Heading 1|Παράρτημα Α — Δομή Αρχείων Έργου
+0435|Caption|Πίνακας 9: Δομή Αρχείων Έργου
+0436|Heading 1|Παράρτημα Β — Τεχνολογίες και Εξαρτήσεις
+0437|Caption|Πίνακας 10: Τεχνολογίες και Εξαρτήσεις
+
+
+--- TABLES ---
+
+Table 0:
+  Row 0: ['Στόχος', 'Ενότητα Υλοποίησης', 'Ενότητα Αξιολόγησης']
+  Row 1: ['1ος — Αυτόματη διόρθωση', 'Fixer Agent, Coordinator', 'Πίνακας Αποτελεσμάτων, Ανάλυση Αποτελεσμάτων']
+  Row 2: ['2ος — Ρόλος QA agents', 'Tester, Reviewer, Evaluator', 'Ρόλος Πρακτόρων QA']
+  Row 3: ['3ος — Τηλεμετρία', 'Database, Tracked Calls', 'Ανάλυση Τηλεμετρίας Tokens']
+
+Table 1:
+  Row 0: ['Πράκτορας', 'Ρόλος', 'Έξοδος']
+  Row 1: ['Fixer Agent', 'Χειρουργική επιδιόρθωση κώδικα μέσω tool calling', 'Τροποποιημένο αρχείο στο disk']
+  Row 2: ['Tester Agent', 'Δυναμική παραγωγή και εκτέλεση unit tests (pytest)', 'Pass/Fail + stdout output']
+  Row 3: ['Reviewer Agent', 'Αξιολόγηση ποιότητας: PEP-8, αναγνωσιμότητα', 'Δομημένο ReviewResult (Pydantic)']
+  Row 4: ['Evaluator Agent', 'Τελική βαθμολόγηση — PASS / RETRY / FAIL', 'Δομημένο EvalResult (Pydantic)']
+  Row 5: ['Coordinator', 'Ενορχήστρωση pipeline, retry logic, reflection', 'report.json + DB records']
+
+Table 2:
+  Row 0: ['Σύστημα', 'Πράκτορες', 'Πηγή Issues', 'Αυτο-βελτίωση', 'Αξιολόγηση']
+  Row 1: ['SWE-Agent', '1 (μονολιθικός)', 'GitHub Issues', 'Όχι', 'Εξωτερική']
+  Row 2: ['AutoCodeRover', '1 (2 φάσεις)', 'GitHub Issues', 'Μερική', 'Εξωτερική']
+  Row 3: ['Aider', '1 (interactive)', 'Χρήστης', 'Μέσω dialogue', 'Χρήστης']
+  Row 4: ['Agentic SonarQube', '5 (multi-agent)', 'SonarQube', 'Ναι (Reflection)', 'Ενσωματωμένη']
+
+Table 3:
+  Row 0: ['Πεδίο', 'Τύπος', 'Περιγραφή']
+  Row 1: ['id', 'Integer (PK)', 'Αυτόματος αύξων αριθμός']
+  Row 2: ['key', 'String (Unique)', 'Μοναδικό κλειδί SonarQube issue']
+  Row 3: ['rule', 'String', 'Κανόνας SonarQube (π.χ. python:S1234)']
+  Row 4: ['severity', 'String', 'BLOCKER, CRITICAL, MAJOR, MINOR, INFO']
+  Row 5: ['component', 'String', 'Πλήρες path αρχείου με project prefix']
+  Row 6: ['file_path', 'String', 'Σχετικό path αρχείου']
+  Row 7: ['line', 'Integer', 'Αριθμός γραμμής']
+  Row 8: ['message', 'Text', 'Περιγραφή ζητήματος']
+  Row 9: ['type', 'String', 'BUG, VULNERABILITY, CODE_SMELL']
+  Row 10: ['status', 'String', 'Κύκλος ζωής: OPEN → FIXED | FAILED']
+  Row 11: ['project_key', 'String', 'Κλειδί project SonarQube']
+  Row 12: ['first_seen_at', 'DateTime', 'Πρώτη εμφάνιση']
+  Row 13: ['last_updated_at', 'DateTime', 'Τελευταία ενημέρωση']
+
+Table 4:
+  Row 0: ['Πεδίο', 'Τύπος', 'Περιγραφή']
+  Row 1: ['id', 'Integer (PK)', 'Αυτόματος αύξων αριθμός']
+  Row 2: ['issue_key', 'String (FK)', 'Σύνδεση με issues.key']
+  Row 3: ['session_branch', 'String', 'Όνομα Git branch']
+  Row 4: ['verdict', 'String', 'IN_PROGRESS → SUCCESS | FAIL']
+  Row 5: ['attempts', 'Integer', 'Αριθμός προσπαθειών']
+  Row 6: ['verified', 'Integer (nullable)', 'None=μη ελεγμένο, 1=επιβεβαιωμένο, 0=ακόμα ανοιχτό']
+  Row 7: ['started_at', 'DateTime', 'Έναρξη εκτέλεσης']
+  Row 8: ['completed_at', 'DateTime', 'Ολοκλήρωση εκτέλεσης']
+
+Table 5:
+  Row 0: ['Πεδίο', 'Τύπος', 'Περιγραφή']
+  Row 1: ['id', 'Integer (PK)', 'Αυτόματος αύξων αριθμός']
+  Row 2: ['run_id', 'Integer (FK)', 'Σύνδεση με pipeline_runs.id']
+  Row 3: ['agent_name', 'String', 'Όνομα πράκτορα']
+  Row 4: ['model_name', 'String', 'Μοντέλο LLM (π.χ. gpt-4o)']
+  Row 5: ['prompt_tokens', 'Integer', 'Tokens εισόδου']
+  Row 6: ['completion_tokens', 'Integer', 'Tokens εξόδου']
+  Row 7: ['total_tokens', 'Integer', 'Σύνολο tokens']
+  Row 8: ['estimated_cost_usd', 'Float', 'Εκτιμώμενο κόστος σε USD']
+  Row 9: ['called_at', 'DateTime', 'Χρονοσήμανση κλήσης']
+
+Table 6:
+  Row 0: ['Μοντέλο', 'Input ($/1K tokens)', 'Output ($/1K tokens)']
+  Row 1: ['gpt-5-nano', '$0.000150', '$0.000600']
+  Row 2: ['gpt-4o-mini', '$0.000150', '$0.000600']
+  Row 3: ['gpt-4o', '$0.002500', '$0.010000']
+  Row 4: ['gpt-4-turbo', '$0.010000', '$0.030000']
+  Row 5: ['gpt-4', '$0.030000', '$0.060000']
+  Row 6: ['claude-3-5-sonnet', '$0.003000', '$0.015000']
+  Row 7: ['claude-3-opus', '$0.015000', '$0.075000']
+  Row 8: ['llama / mistral (local)', '$0.000000', '$0.000000']
+
+Table 7:
+  Row 0: ['Μέθοδος', 'Endpoint', 'Περιγραφή']
+  Row 1: ['GET', '/issues/{project_key}', 'Ανάκτηση open issues από SonarQube']
+  Row 2: ['POST', '/scan', 'Clone repo + εκτέλεση SonarQube scan']
+  Row 3: ['POST', '/pipeline/run', 'Εκκίνηση ασύγχρονου pipeline run']
+  Row 4: ['GET', '/pipeline/status/{session_id}', 'Παρακολούθηση προόδου pipeline']
+  Row 5: ['POST', '/pipeline/verify', 'Επαλήθευση διορθώσεων μέσω re-scan']
+  Row 6: ['GET', '/runs', 'Λίστα πρόσφατων pipeline runs']
+  Row 7: ['GET', '/analytics', 'Στατιστικά (tokens, κόστος, success rate)']
+
+Table 8:
+  Row 0: ['#', 'Κανόνας', 'Αρχείο', 'Τύπος', 'Verdict', 'Score', 'Προσπάθειες']
+  Row 1: ['1', 'python:S3984', 'pokedex/helper.py:36', 'BUG', 'PASS', '—', '1']
+  Row 2: ['2', 'python:S2772', 'pokedex/helper.py:38', 'CODE_SMELL', 'PASS', '—', '1']
+  Row 3: ['3', 'python:S112', 'pokedex/helper.py:20', 'CODE_SMELL', 'PASS', '8.7', '1']
+  Row 4: ['4', 'python:S6965', 'pokedex/app.py:9', 'CODE_SMELL', 'PASS', '9.0', '1']
+  Row 5: ['5', 'python:S1135', 'pokedex/app.py:22', 'CODE_SMELL', 'PASS', '—', '1']
+  Row 6: ['6', 'python:S1045', 'pokedex/helper.py:21', 'BUG', 'FAIL', '—', '3+']
+
+Table 9:
+  Row 0: ['Πράκτορας', 'Κλήσεις', 'Prompt Tokens', 'Completion Tokens', 'Σύνολο', 'Ποσοστό', 'Κόστος ($)']
+  Row 1: ['Tester Agent', '32', '62.865', '51.322', '114.187', '52,9%', '0,0204']
+  Row 2: ['Fixer Agent', '24', '24.093', '47.173', '71.266', '33,1%', '0,0048']
+  Row 3: ['Evaluator Agent', '6', '6.802', '9.529', '16.331', '7,6%', '0,0029']
+  Row 4: ['Reviewer Agent', '6', '5.313', '8.507', '13.820', '6,4%', '0,0017']
+  Row 5: ['Σύνολο', '68', '99.073', '116.531', '215.604', '100%', '0,0299']
+
+Table 10:
+  Row 0: ['[1]', 'SonarSource, "SonarQube: Continuous Code Quality," 2024. [Online]. Available: https://www.sonarsource.com/products/sonarqube/.']
+  Row 1: ['[2]', 'OpenAI, "GPT-4o," 2024. [Online]. Available: https://openai.com/index/gpt-4o/.']
+  Row 2: ['[3]', 'Anthropic, "Claude 3 Family," 2024. [Online]. Available: https://www.anthropic.com/claude.']
+  Row 3: ['[4]', 'H. Touvron, T. Lavril, G. Izacard, et al., "LLaMA: Open and Efficient Foundation Language Models," 2023. [Online]. Available: https://arxiv.org/abs/2302.13971.']
+  Row 4: ['[5]', 'C. Le Goues, T. Nguyen, S. Forrest, and W. Weimer, "GenProg: A Generic Method for Automatic Software Repair," 2012.']
+  Row 5: ['[6]', 'D. Kim, J. Nam, J. Song, and S. Kim, "Automatic Patch Generation Learned from Human-Written Patches," 2013.']
+  Row 6: ['[7]', 'J. Yang, C. E. Jimenez, A. Wettig, et al., "SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering," 2024.']
+  Row 7: ['[8]', 'Y. Zhang, H. R. Zhang, et al., "AutoCodeRover: Autonomous Program Improvement," 2024.']
+  Row 8: ['[9]', 'P. Gauthier, "Aider: AI Pair Programming in Your Terminal," 2024. [Online]. Available: https://aider.chat/.']
+  Row 9: ['[10]', 'A. Ng, "Agentic Design Patterns," 2024.']
+  Row 10: ['[11]', 'L. Weng, "LLM Powered Autonomous Agents," 2023. [Online]. Available: https://lilianweng.github.io/posts/2023-06-23-agent/.']
+  Row 11: ['[12]', 'T. Schick, J. Dwivedi-Yu, R. Dessì, et al., "Toolformer: Language Models Can Teach Themselves to Use Tools," 2023.']
+  Row 12: ['[13]', 'N. Shinn, B. Labash, and A. Gopinath, "Reflexion: Language Agents with Verbal Reinforcement Learning," 2023.']
+  Row 13: ['[14]', 'Q. Wu, G. Bansal, J. Zhang, et al., "AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation," 2023.']
+  Row 14: ['[15]', 'M. Chen, J. Tworek, H. Jun, et al., "Evaluating Large Language Models Trained on Code," 2021. [Online]. Available: https://arxiv.org/abs/2107.03374.']
+  Row 15: ['[16]', 'Docker Inc., "Docker Compose," 2024. [Online]. Available: https://docs.docker.com/compose/.']
+  Row 16: ['[17]', 'FastAPI, "FastAPI: Modern, Fast Web Framework for Building APIs," 2024. [Online]. Available: https://fastapi.tiangolo.com/.']
+  Row 17: ['[18]', 'OpenAI, "Function Calling," 2024. [Online]. Available: https://platform.openai.com/docs/guides/function-calling.']
+  Row 18: ['[19]', 'OpenAI, "Structured Outputs," 2024. [Online]. Available: https://platform.openai.com/docs/guides/structured-outputs.']
+  Row 19: ['[20]', 'Pydantic, "Pydantic: Data Validation Using Python Type Annotations," 2024. [Online]. Available: https://docs.pydantic.dev/.']
+  Row 20: ['[21]', 'pytest, "pytest: Simple Powerful Testing with Python," 2024. [Online]. Available: https://docs.pytest.org/.']
+  Row 21: ['[22]', 'SonarSource, "SonarQube Web API Documentation," 2024. [Online]. Available: https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/.']
+  Row 22: ['[23]', 'SQLAlchemy, "SQLAlchemy: The Database Toolkit for Python," 2024. [Online]. Available: https://www.sqlalchemy.org/.']
+  Row 23: ['[24]', 'Streamlit, "Streamlit: A Faster Way to Build and Share Data Apps," 2024. [Online]. Available: https://streamlit.io/.']
+
+Table 11:
+  Row 0: ['Αρχείο', 'Περιγραφή']
+  Row 1: ['ui.py', 'Streamlit web dashboard (4 σελίδες)']
+  Row 2: ['main.py', 'CLI entry point']
+  Row 3: ['api.py', 'FastAPI REST API (7 endpoints)']
+  Row 4: ['sonarcube_client.py', 'SonarQube API client με pagination']
+  Row 5: ['models.py', 'Pydantic/dataclass μοντέλα δεδομένων']
+  Row 6: ['database.py', 'SQLAlchemy ORM + analytics queries']
+  Row 7: ['log_config.py', 'Centralized logging configuration']
+  Row 8: ['agents/agent.py', 'Βασική κλάση agent με tracked LLM calls']
+  Row 9: ['agents/coordinator.py', 'Ενορχήστρωση pipeline + retry logic']
+  Row 10: ['agents/fixer.py', 'Χειρουργική διόρθωση κώδικα (tool calling)']
+  Row 11: ['agents/tester.py', 'Δυναμική παραγωγή + εκτέλεση pytest']
+  Row 12: ['agents/reviewer.py', 'Αξιολόγηση ποιότητας (structured output)']
+  Row 13: ['agents/evaluator.py', 'Τελική βαθμολόγηση + PASS/RETRY/FAIL']
+  Row 14: ['Dockerfile', 'Container image definition']
+  Row 15: ['docker-compose.yml', 'Full stack (app + SonarQube)']
+  Row 16: ['start.sh', 'Startup script (FastAPI + Streamlit)']
+  Row 17: ['requirements.docker.txt', 'Lean Docker dependencies']
+  Row 18: ['tests/test_verification.py', 'Unit/integration tests (19 test cases)']
+
+Table 12:
+  Row 0: ['Τεχνολογία', 'Χρήση', 'Έκδοση']
+  Row 1: ['Python', 'Γλώσσα υλοποίησης', '≥ 3.12']
+  Row 2: ['OpenAI SDK', 'LLM API client', '≥ 1.109.0']
+  Row 3: ['FastAPI', 'REST API framework', '≥ 0.115.0']
+  Row 4: ['Uvicorn', 'ASGI server', '≥ 0.34.0']
+  Row 5: ['Streamlit', 'Web dashboard', '≥ 1.40.0']
+  Row 6: ['SQLAlchemy', 'ORM / database', '≥ 2.0.0']
+  Row 7: ['Pydantic', 'Data validation / structured outputs', '≥ 2.0.0']
+  Row 8: ['pytest', 'Testing framework', '≥ 9.0.0']
+  Row 9: ['Requests', 'HTTP client', '≥ 2.32.0']
+  Row 10: ['python-dotenv', 'Environment configuration', '≥ 1.1.0']
+  Row 11: ['Docker', 'Containerization', '—']
+  Row 12: ['SonarQube', 'Static code analysis', 'Community Edition']
+  Row 13: ['sonar-scanner-cli', 'CLI scanner', 'v6.2.1']
